@@ -13,6 +13,10 @@ This package is actually a port and cleaned up version of [JGeekCode](http://git
 
 ## Generating a Geek Code with `geek_code.v312`
 
+First you must import the library:
+
+    import "package:geek_code/geek_code_312.dart";
+
 Start with a `GeekCodeV312` object that will contain all the types and categories:
 
     GeekCodeV312 code = new GeekCodeV312([G312.IT, G312.CS]);
@@ -29,7 +33,7 @@ Generating a Geek Code block is done by callin `generate`:
 
     print(code.generate());
 
-### Modifiers
+### Variables and modifiers
 
 As per the v3.12 specification it is possible to set certain modifiers for categories.
 
@@ -38,8 +42,9 @@ As per the v3.12 specification it is possible to set certain modifiers for categ
 Some modifiers are incompatible with each other:
 
   code.addCategory(h.living().noKnowledge()); // Throws a GeekCodeError
-  
- 
+
+Some categories have specific modifiers so be sure to consult the documentation for each builder before using it.
+
 ### Full example
 
     GeekCodeV312 code = new GeekCodeV312([G312.IT, G312.CS] as List<GeekCodeType>)

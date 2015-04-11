@@ -1,0 +1,42 @@
+/* http://ironsummitmedia.github.io/startbootstrap-simple-sidebar/ */
+#wrapper {
+  padding-right: 0;
+  -webkit-transition: all 0.5s ease;
+  -moz-transition: all 0.5s ease;
+  -o-transition: all 0.5s ease;
+  transition: all 0.5s ease;
+}
+
+#wrapper.showMenu {
+  padding-right: 250px;
+}
+
+#sidebar-wrapper {
+  background: white;
+  z-index: 1000;
+  position: fixed;
+  right: 250px;
+  width: 0;
+  height: 100%;
+  margin-right: -250px;
+  overflow-y: auto;
+  border-left: 1px solid gray;
+  -webkit-transition: all 0.5s ease;
+  -moz-transition: all 0.5s ease;
+  -o-transition: all 0.5s ease;
+  transition: all 0.5s ease;
+}
+
+#wrapper.showMenu #sidebar-wrapper {
+  width: 250px;
+}
+
+#page-content-wrapper {
+  width: 100%;
+  position: absolute;
+}
+
+#wrapper.showMenu #page-content-wrapper {
+  position: relative;
+  margin-left: 0;
+}

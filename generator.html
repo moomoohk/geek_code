@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+
+<!--
+  Copyright (c) 2015, Meshulam Silk (moomoohk@ymail.com). All rights reserved. Use of this source code
+  is governed by a BSD-style license that can be found in the LICENSE file.
+-->
+
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="scaffolded-by" content="https://github.com/google/stagehand">
+    <title>geek_code_frontend</title>
+
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/layout.css">
+
+    <script type="application/dart" src="main.dart"></script>
+    <script data-pub-inline src="packages/browser/dart.js"></script>
+    <script data-pub-inline="" src="/static/dart/packages/browser/dart.js"></script>
+  </head>
+  <body>
+    <div id="wrapper">
+      <div id="sidebar-wrapper">
+        <div id="notification" class="slides"></div>
+        <textarea readonly id="output" placeholder="[Output goes here]"></textarea>
+        <div id="toggleButtons">
+          <button id="clear" class="sidebarButton">Clear</button>
+        </div>
+        <footer>
+          <span>Version 0.0.1</span>
+          <br>
+          <span>Powered by <a href="https://pub.dartlang.org/packages/geek_code" target="_blank">geek_code</a></span>
+        </footer>
+      </div>
+      <div id="page-content-wrapper">
+        <div class="page-content">
+          <div class="container">
+            <div id="loading">Loading...</div>
+            <section>
+              <h1>Moomoohk's Online Geek Code Generator</h1>
+              <p>
+                Generate your very own <a href="http://geekcode.com/">Geek Code</a>!
+                <br>
+                Set all the categories you like down below and your code will automatically generate in the output box in the sidebar
+                <br>
+                At some point I'll add full explanations for everything on this page but for now check out the official v3.12 spec over <a href="http://geekcode.com/geek.html">here</a>
+                <br>
+                <button id="toggleMenu">Toggle Sidebar</button>
+              </p>
+              <h2 class="collapse" id="types">Types</h2>
+              <form id="typesForm" class="slides">
+                <input type="checkbox" id="AT" name="AT" value="AT"><label for="AT">AT: Geek of All Trades. For those geeks that can do anything and everything. GAT usually precludes the use of other vocational descriptors.</label><br>
+                <input type="checkbox" id="B" name="B" value="B"><label for="B">B: Geek of Business</label><br>
+                <input type="checkbox" id="C" name="C" value="C"><label for="C">C: Geek of Classics</label><br>
+                <input type="checkbox" id="CA" name="CA" value="CA"><label for="CA">CA: Geek of Commercial Arts</label><br>
+                <input type="checkbox" id="CC" name="CC" value="CC"><label for="CC">CC: Geek of Communications</label><br>
+                <input type="checkbox" id="CM" name="CM" value="CM"><label for="CM">CM: Geek of Computer Management</label><br>
+                <input type="checkbox" id="CS" name="CS" value="CS"><label for="CS">CS: Geek of Computer Science</label><br>
+                <input type="checkbox" id="E" name="E" value="E"><label for="E">E: Geek of Engineering</label><br>
+                <input type="checkbox" id="ED" name="ED" value="ED"><label for="ED">ED: Geek of Education</label><br>
+                <input type="checkbox" id="FA" name="FA" value="FA"><label for="FA">FA: Geek of Fine Arts</label><br>
+                <input type="checkbox" id="G" name="G" value="G"><label for="G">G: Geek of Government</label><br>
+                <input type="checkbox" id="H" name="H" value="H"><label for="H">H: Geek of Humanities</label><br>
+                <input type="checkbox" id="IT" name="IT" value="IT"><label for="IT">IT: Geek of Information Technology</label><br>
+                <input type="checkbox" id="J" name="J" value="J"><label for="J">J: Geek of Jurisprudence (Law)</label><br>
+                <input type="checkbox" id="L" name="L" value="L"><label for="L">L: Geek of Literature</label><br>
+                <input type="checkbox" id="LS" name="LS" value="LS"><label for="LS">LS: Geek of Library Science</label><br>
+                <input type="checkbox" id="M" name="M" value="M"><label for="M">M: Geek of Math</label><br>
+                <input type="checkbox" id="MC" name="MC" value="MC"><label for="MC">MC: Geek of Mass Communications</label><br>
+                <input type="checkbox" id="MD" name="MD" value="MD"><label for="MD">MD: Geek of Medicine</label><br>
+                <input type="checkbox" id="MU" name="MU" value="MU"><label for="MU">MU: Geek of Music</label><br>
+                <input type="checkbox" id="O" name="O" value="O"><label for="O">O: Geek of Other. Some types of geeks deviate from the normal geek activities. This is encouraged as true geeks come from all walks of life.</label><br>
+                <input type="checkbox" id="P" name="P" value="P"><label for="P">P: Geek of Philosophy</label><br>
+                <input type="checkbox" id="PA" name="PA" value="PA"><label for="PA">PA: Geek of Performing Arts</label><br>
+                <input type="checkbox" id="S" name="S" value="S"><label for="S">S: Geek of Science (Physics, Chemistry, Biology, etc.)</label><br>
+                <input type="checkbox" id="SS" name="SS" value="SS"><label for="SS">SS: Geek of Social Science (Psychology, Sociology, etc.)</label><br>
+                <input type="checkbox" id="TW" name="TW" value="TW"><label for="TW">TW: Geek of Technical Writing</label><br>
+                <input type="checkbox" id="U" name="U" value="U"><label for="U">U: Geek of 'Undecided'. This is a popular vocation with incoming freshmen.</label><br>
+                <input type="checkbox" id="no_qualifications" name="no_qualifications" value="!"><label for="no_qualifications">!: Geek of no qualifications. A rather miserable existence, you would think.</label><br>
+              </form>
+              <h2 class="collapse" id="appearance">Appearance</h2>
+              <form id="appearanceForm" class="slides">
+                <h3>Dress</h3>
+                <span>d</span>
+                <button class="addCategory" name="d">Add category</button>
+                <div class="gradeContainer" name="d">
+                  <select class="grade" name="d">
+                    <option value="2">++</option>
+                    <option value="1">+</option>
+                    <option value="0" selected></option>
+                    <option value="-1">-</option>
+                    <option value="-2">--</option>
+                    <option value="-3">---</option>
+                  </select>
+                  <input type="radio" id="dx" name="d" value="crossDresser"><label for="dx" name="d">x</label>
+                  <input type="radio" id="d?" name="d" value="noKnowledge"><label for="d?" name="d">?</label>
+                  <input type="radio" id="d!" name="d" value="refuse"><label for="d!" name="d">!</label>
+                  <input type="radio" id="dpu" name="d" value="sameClothes"><label for="dpu" name="d">pu</label>
+                  <button class="removeModifiers" name="d">Remove modifiers</button>
+                  <br>
+                  <button class="removeCategory" name="d">Remove category</button>
+                </div>
+                <h3>Shape</h3>
+                <span>s</span>
+                <button class="addCategory" name="s">Add category</button>
+                <div class="gradeContainer" name="s">
+                  <select class="grade" name="s">
+                    <option value="2">++</option>
+                    <option value="1">+</option>
+                    <option value="0" selected></option>
+                    <option value="-1">-</option>
+                    <option value="-2">--</option>
+                    <option value="-3">---</option>
+                  </select>
+                  <span>:</span>
+                  <select class="secondary grade" name="s" id="shapeRoundness">
+                    <option value="2">++</option>
+                    <option value="1">+</option>
+                    <option value="0" selected></option>
+                    <option value="-1">-</option>
+                    <option value="-2">--</option>
+                    <option value="-3">---</option>
+                  </select>
+                  <input type="radio" id="s?" name="s" value="noKnowledge"><label for="s?" name="s">?</label>
+                  <input type="radio" id="s!" name="s" value="refuse"><label for="s!" name="s">!</label>
+                  <button class="removeModifiers" name="s">Remove modifiers</button>
+                  <br>
+                  <button class="removeCategory" name="s">Remove category</button>
+                </div>
+                <h3>Age</h3>
+                <span>a</span>
+                <button class="addCategory" name="a">Add category</button>
+                <div class="gradeContainer" name="a">
+                  <select class="grade" name="a">
+                    <option value="3">+++</option>
+                    <option value="2">++</option>
+                    <option value="1">+</option>
+                    <option value="0" selected></option>
+                    <option value="-1">-</option>
+                    <option value="-2">--</option>
+                    <option value="-3">---</option>
+                    <option value="-4">----</option>
+                    <option value="-5">-----</option>
+                  </select>
+                  <input type="radio" id="a?" name="a" value="noKnowledge"><label for="a?" name="a">?</label>
+                  <input type="radio" id="a!" name="a" value="refuse"><label for="a!" name="a">!</label>
+                  <button class="removeModifiers" name="a">Remove modifiers</button>
+                  <br>
+                  <button class="removeCategory" name="a">Remove category</button>
+                </div>
+              </form>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

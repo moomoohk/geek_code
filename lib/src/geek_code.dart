@@ -60,9 +60,15 @@ class GeekCode {
   String generate([String version]) {
     if (version == null) throw new ArgumentError("Must provide version!");
     String st = "-----BEGIN GEEK CODE BLOCK-----\nVersion: $version\nG";
-    for (GeekCodeType type in _types) st += "$type/";
-    st = st.substring(0, st.length - 1) + " ";
-    int categories = 0;
+    int types = 0;
+    for (GeekCodeType type in _types) {
+      st += "$type";
+      types++;
+      if (types != _types.length) st += "/";
+    }
+    if (types > 8) st += "\n";
+    else st += " ";
+    int categories = types;
     for (GeekCodeCategory category in _categories.values) {
       st += "$category ";
       categories++;

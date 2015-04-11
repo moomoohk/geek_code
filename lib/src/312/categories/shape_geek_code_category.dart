@@ -48,11 +48,13 @@ class ShapeGeekCodeCategoryBuilder extends GeekCodeCategoryBuilder {
    *
    * See [GeekCodeCategoryBuilder.subValidate] for a fuller explanation of this method.
    */
-  ShapeGeekCodeCategory subValidate(GeekCodeGrade grade) {
-    if (grade == null) throw new GeekCodeError("grade (height) not set!");
-    if (_roundness == null) throw new GeekCodeError("roundness not set!");
-    if (_roundness.grade.grade < super.minGrade ||
-        _roundness.grade.grade > this.maxGrade) throw new ArgumentError("roundness[${grade.grade}] must fall within bounds: minGrade[${super.minGrade}], maxGrade[${super.maxGrade}!");
+  ShapeGeekCodeCategory subValidate(GeekCodeGrade grade, bool refuse, bool noKnowledge) {
+    if (!refuse && !noKnowledge) {
+      if (grade == null) throw new GeekCodeError("grade (height) not set!");
+      if (_roundness == null) throw new GeekCodeError("roundness not set!");
+      if (_roundness.grade.grade < super.minGrade ||
+          _roundness.grade.grade > this.maxGrade) throw new ArgumentError("roundness[${grade.grade}] must fall within bounds: minGrade[${super.minGrade}], maxGrade[${super.maxGrade}!");
+    }
     return new ShapeGeekCodeCategory(this, grade);
   }
 }
@@ -89,5 +91,5 @@ class ShapeGeekCodeCategory extends GeekCodeCategory {
         this._roundness = builder._roundness,
         super(builder, grade);
 
-  String toString() => super.toString() + ":$_roundness";
+  String toString() => super.toString() + (!_builder.getRefuse && !_builder.getNoKnowledge ? ":$_roundness" : "");
 }

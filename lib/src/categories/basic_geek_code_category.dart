@@ -33,6 +33,11 @@ class BasicGeekCodeCategoryBuilder {
   bool _refuse = false;
   GeekCodeGrade _crossover;
 
+  bool get getNoRigid => _notRigid;
+  bool get getLiving => _living;
+  bool get getNoKnowledge => _noKnowledge;
+  bool get getRefuse => _refuse;
+
   /**
    * Original documentation:
    *

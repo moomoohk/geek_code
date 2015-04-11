@@ -45,7 +45,7 @@ class DressGeekCodeCategoryBuilder extends GeekCodeCategoryBuilder {
    *
    * See [GeekCodeCategoryBuilder.subValidate] for a fuller explanation of this method.
    */
-  DressGeekCodeCategory subValidate(GeekCodeGrade grade) => new DressGeekCodeCategory(this, grade);
+  DressGeekCodeCategory subValidate(GeekCodeGrade grade, bool refuse, bool noKnowledge) => new DressGeekCodeCategory(this, grade);
 }
 
 /**

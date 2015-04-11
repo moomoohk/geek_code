@@ -67,7 +67,7 @@ abstract class GeekCodeCategoryBuilder extends BasicGeekCodeCategoryBuilder {
     if (minGrade > maxGrade) throw new ArgumentError("minGrade[$minGrade] must be smaller than maxGrade[$maxGrade}]!");
     if (grade != null &&
         (grade.grade < minGrade || grade.grade > this.maxGrade)) throw new ArgumentError("grade[${grade.grade}] must fall within bounds: minGrade[$minGrade], maxGrade[$maxGrade]!");
-    return subValidate(grade);
+    return subValidate(grade, _refuse, _noKnowledge);
   }
 
   /**
@@ -79,7 +79,7 @@ abstract class GeekCodeCategoryBuilder extends BasicGeekCodeCategoryBuilder {
    *
    * [grade] is the grade to apply to this category.
    */
-  GeekCodeCategory subValidate(GeekCodeGrade grade);
+  GeekCodeCategory subValidate(GeekCodeGrade grade, bool refuse, bool noKnowledge);
 }
 
 /**

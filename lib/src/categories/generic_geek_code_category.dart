@@ -24,5 +24,5 @@ class GenericGeekCodeCategoryBuilder extends GeekCodeCategoryBuilder {
    *
    * See [GeekCodeCategoryBuilder.subValidate] for a fuller explanation of this method.
    */
-  GeekCodeCategory subValidate(GeekCodeGrade grade) => new GeekCodeCategory(this, grade);
+  GeekCodeCategory subValidate(GeekCodeGrade grade, bool refuse, bool noKnowledge) => new GeekCodeCategory(this, grade);
 }

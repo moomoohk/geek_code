@@ -90,7 +90,7 @@ class UnixGeekCodeCategoryBuilder extends GeekCodeCategoryBuilder {
     return this;
   }
 
-  GeekCodeCategory subValidate(GeekCodeGrade grade) {
+  GeekCodeCategory subValidate(GeekCodeGrade grade, bool refuse, bool noKnowledge) {
     if (this.type == null) _type = UnixType.NOT_SPECIFIED;
     return new UnixGeekCodeCategory(this, grade, _type);
   }
@@ -223,6 +223,9 @@ class UnixGeekCodeCategory extends GeekCodeCategory {
   UnixGeekCodeCategory(UnixGeekCodeCategoryBuilder builder, GeekCodeGrade grade, UnixType type)
       : this._builder = builder,
         super(builder, grade) {
-    super.code = "U${type.toString().split(".")[1]}";
+    if (type != UnixType.NOT_SPECIFIED) {
+      if (type == UnixType.OTHER) super.code = "U*";
+      else super.code = "U${type.toString().split(".")[1]}";
+    }
   }
 }

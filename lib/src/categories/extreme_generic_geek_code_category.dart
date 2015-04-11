@@ -31,7 +31,7 @@ class ExtremeGenericGeekCodeCategoryBuilder extends GenericGeekCodeCategoryBuild
    */
   GeekCodeCategory extreme(int level) {
     _extreme = level;
-    return subValidate(null);
+    return subValidate(null, false, false);
   }
 
   /**
@@ -39,7 +39,7 @@ class ExtremeGenericGeekCodeCategoryBuilder extends GenericGeekCodeCategoryBuild
    *
    * See [GeekCodeCategoryBuilder.subValidate] for a fuller explanation of this method.
    */
-  ExtremeGeekCodeCategory subValidate(GeekCodeGrade grade) => new ExtremeGeekCodeCategory(this, grade);
+  ExtremeGeekCodeCategory subValidate(GeekCodeGrade grade, bool refuse, bool noKnowledge) => new ExtremeGeekCodeCategory(this, grade);
 }
 
 /**

@@ -46,7 +46,7 @@ class SexGeekCodeCategoryBuilder extends ExtremeGenericGeekCodeCategoryBuilder {
    *
    * See [GeekCodeCategoryBuilder.subValidate] for a fuller explanation of this method.
    */
-  SexGeekCodeCategory subValidate(GeekCodeGrade grade) => new SexGeekCodeCategory(this, grade, _gender);
+  SexGeekCodeCategory subValidate(GeekCodeGrade grade, bool refuse, bool noKnowledge) => new SexGeekCodeCategory(this, grade, _gender);
 }
 
 /**

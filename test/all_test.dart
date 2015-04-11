@@ -6,12 +6,12 @@ library geek_code.test;
 import "package:geek_code/geek_code_312.dart";
 
 main() {
-  GeekCodeV312 code = new GeekCodeV312([G312.IT, G312.CS] as List<GeekCodeType>)
-    ..addCategory(d.crossover(new GeekCodeGrade(0)).living().grade(new GeekCodeGrade(-1)))
-    ..addCategory(s.roundness(new BasicGeekCodeCategoryBuilder().grade(new GeekCodeGrade(-1))).grade(new GeekCodeGrade(3)))
+  GeekCodeV312 code = new GeekCodeV312([G312.IT, G312.CS, G312.B, G312.C] as List<GeekCodeType>)
+    ..addCategory(d.refuse())
+    ..addCategory(s.refuse())
     ..addCategory(a.grade(new GeekCodeGrade(-3)))
     ..addCategory(C.grade(new GeekCodeGrade(2)))
-    ..addCategory(U.B().grade(new GeekCodeGrade(2)))
+    ..addCategory(U.refuse())
     ..addCategory(P.noKnowledge())
     ..addCategory(E.grade(new GeekCodeGrade(-1)))
     ..addCategory(W.grade(new GeekCodeGrade(3)))
@@ -37,6 +37,6 @@ main() {
     ..addCategory(e.grade(new GeekCodeGrade(0)))
     ..addCategory(h.living().grade(new GeekCodeGrade(-2)))
     ..addCategory(r.refuse())
-    ..addCategory(z.male().grade(new GeekCodeGrade(0)));
+    ..addCategory(z.refuse());
   print(code.generate());
 }

@@ -54,5 +54,5 @@ class AgeGeekCodeCategory extends GeekCodeCategory {
       : this._builder = builder,
         super(builder, grade);
 
-  String toString() => super.toString() + "${_builder._age}";
+  String toString() => super.toString() + (_builder._age != null ? _builder._age : "");
 }

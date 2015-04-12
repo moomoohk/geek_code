@@ -9,7 +9,7 @@ main() {
   GeekCodeV312 code = new GeekCodeV312([G312.IT, G312.CS, G312.B, G312.C] as List<GeekCodeType>)
     ..addCategory(d.refuse())
     ..addCategory(s.refuse())
-    ..addCategory(a.age(20))
+    ..addCategory(a.grade(new GeekCodeGrade(1)))
     ..addCategory(C.grade(new GeekCodeGrade(2)))
     ..addCategory(U.refuse())
     ..addCategory(P.noKnowledge())

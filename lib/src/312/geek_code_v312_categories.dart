@@ -48,10 +48,8 @@ final ShapeGeekCodeCategoryBuilder s = getBuilder("s") as ShapeGeekCodeCategoryB
  *      it's none of your business how old I am
  *
  *     In addition, if you wish to give your exact age, you can place the number after the 'a' identifier. For example: a42
- *
- * Note: Providing exact age is not supported currently.
  */
-final GenericGeekCodeCategoryBuilder a = getBuilder("a") as GenericGeekCodeCategoryBuilder; //TODO: Support exact age
+final AgeGeekCodeCategoryBuilder a = getBuilder("a") as AgeGeekCodeCategoryBuilder;
 
 /**
  * Builds the Computers category.
@@ -815,7 +813,7 @@ GeekCodeCategoryBuilder getBuilder(String categoryCode) {
       return new ShapeGeekCodeCategoryBuilder("s", -3, 3);
 
     case "a":
-      return new GenericGeekCodeCategoryBuilder("a", -5, 3);
+      return new AgeGeekCodeCategoryBuilder("a", -5, 3);
 
     case "C":
       return new GenericGeekCodeCategoryBuilder("C", -3, 4);

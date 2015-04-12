@@ -11,33 +11,24 @@ part of geek_code.v312;
  * * [crossDresser]
  * * [sameClothes]
  */
-class DressGeekCodeCategoryBuilder extends GeekCodeCategoryBuilder {
-  bool _crossDresser, _sameClothes;
+class AgeGeekCodeCategoryBuilder extends GeekCodeCategoryBuilder {
+  int _age;
 
   /**
    * Creates a new [DressGeekCodeCategoryBuilder] object.
    *
    * See [GeekCodeCategoryBuilder.GeekCodeCategoryBuilder] for a description of the parameters.
    */
-  DressGeekCodeCategoryBuilder(String code, int minGrade, int maxGrade)
-      : _crossDresser = false,
-        _sameClothes = false,
-        super(code, minGrade, maxGrade);
+  AgeGeekCodeCategoryBuilder(String code, int minGrade, int maxGrade) : super(code, minGrade, maxGrade);
 
   /**
-   * Sets the "cross dresser" variable for this category.
+   * Original documentation:
+   *
+   *     In addition, if you wish to give your exact age, you can place the number after the 'a' identifier. For example: a42
    */
-  DressGeekCodeCategoryBuilder crossDresser() {
-    _crossDresser = true;
-    return this;
-  }
-
-  /**
-   * Sets the "same clothes" variable for this category.
-   */
-  DressGeekCodeCategoryBuilder sameClothes() {
-    _sameClothes = true;
-    return this;
+  AgeGeekCodeCategory age(int age) {
+    this._age = age;
+    return subValidate(null, false, false);
   }
 
   /**
@@ -45,7 +36,7 @@ class DressGeekCodeCategoryBuilder extends GeekCodeCategoryBuilder {
    *
    * See [GeekCodeCategoryBuilder.subValidate] for a fuller explanation of this method.
    */
-  DressGeekCodeCategory subValidate(GeekCodeGrade grade, bool refuse, bool noKnowledge) => new DressGeekCodeCategory(this, grade);
+  AgeGeekCodeCategory subValidate(GeekCodeGrade grade, bool refuse, bool noKnowledge) => new AgeGeekCodeCategory(this, grade);
 }
 
 /**
@@ -53,16 +44,15 @@ class DressGeekCodeCategoryBuilder extends GeekCodeCategoryBuilder {
  *
  *     It is said that "clothes make the man". Well, I understood that I was made by a mommy and a daddy (and there's even a category to describe the process below!). Maybe the people who made up that saying aren't being quite that literal...
  */
-class DressGeekCodeCategory extends GeekCodeCategory {
-  final DressGeekCodeCategoryBuilder _builder;
+class AgeGeekCodeCategory extends GeekCodeCategory {
+  final AgeGeekCodeCategoryBuilder _builder;
 
   /**
    * See [GeekCodeCategory.GeekCodeCategory] for a description of the parameters.
    */
-  DressGeekCodeCategory(DressGeekCodeCategoryBuilder builder, GeekCodeGrade grade)
+  AgeGeekCodeCategory(AgeGeekCodeCategoryBuilder builder, GeekCodeGrade grade)
       : this._builder = builder,
-        super(builder, grade) {
-    if (_builder._crossDresser) super.code += "x";
-    if (_builder._sameClothes) super.code += "pu";
-  }
+        super(builder, grade);
+
+  String toString() => super.toString() + "${_builder._age}";
 }

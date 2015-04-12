@@ -36,7 +36,7 @@ main() {
     ..addCategory(GCode.grade(new GeekCodeGrade(2)))
     ..addCategory(e.grade(new GeekCodeGrade(0)))
     ..addCategory(h.living().grade(new GeekCodeGrade(-2)))
-    ..addCategory(r.refuse())
+    ..addCategory(r.dumped())
     ..addCategory(z.refuse());
   print(code.generate());
 }

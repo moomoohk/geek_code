@@ -787,10 +787,8 @@ final ExtremeGenericGeekCodeCategoryBuilder h = getBuilder("h") as ExtremeGeneri
  *      signifying membership in the SBCA (Sour Bachelor(ette)'s Club of America). The motto is 'Bitter, but not Desperate'. First founded at Caltech.
  *     r%
  *      I was going out with someone, but the asshole dumped me.
- *
- * Note: r% is not supported currently.
  */
-final ExtremeGenericGeekCodeCategoryBuilder r = getBuilder("r") as ExtremeGenericGeekCodeCategoryBuilder; //TODO: Support r%
+final RelationshipsGeekCodeCategoryBuilder r = getBuilder("r") as RelationshipsGeekCodeCategoryBuilder;
 
 /**
  * Builds the Sex category
@@ -936,7 +934,7 @@ GeekCodeCategoryBuilder getBuilder(String categoryCode) {
       return new ExtremeGenericGeekCodeCategoryBuilder("h", -4, 2);
 
     case "r":
-      return new ExtremeGenericGeekCodeCategoryBuilder("r", -3, 3);
+      return new RelationshipsGeekCodeCategoryBuilder("r", -3, 3);
 
     case "x":
       return new SexGeekCodeCategoryBuilder("z", -3, 5).female();

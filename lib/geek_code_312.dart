@@ -19,5 +19,6 @@ part "src/312/categories/unix_geek_code_category.dart";
 part "src/312/categories/dress_geek_code_category.dart";
 part "src/312/categories/shape_geek_code_category.dart";
 part "src/312/categories/age_geek_code_category.dart";
+part "src/312/categories/relationships_geek_code_category.dart";
 part "src/312/geek_code_types.dart";
 part "src/312/geek_code_v312_categories.dart";

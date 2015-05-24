@@ -223,7 +223,8 @@ function setupProgram(programData) {
         var prototype = constructor.prototype;
         prototype.constructor = constructor;
         prototype.$isObject = constructor;
-        prototype.$deferredAction = markerFun;
+        prototype.$deferredAction = function() {
+        };
         return;
       }
       finishClass(superclass);
@@ -232,6 +233,8 @@ function setupProgram(programData) {
         superConstructor = existingIsolateProperties[superclass];
       var constructor = allClasses[cls];
       var prototype = inheritFrom(constructor, superConstructor);
+      if (mixinPrototype)
+        prototype.$deferredAction = mixinDeferredActionHelper(mixinPrototype, prototype);
       if (Object.prototype.hasOwnProperty.call(prototype, "%")) {
         var nativeSpec = prototype["%"].split(";");
         if (nativeSpec[0]) {
@@ -255,34 +258,49 @@ function setupProgram(programData) {
             init.leafTags[tags[i]] = false;
           }
         }
-        if (constructor.prototype.$deferredAction)
-          finishAddStubsHelper(constructor.prototype);
+        prototype.$deferredAction();
       }
-      if (prototype.$isInterceptor && constructor.prototype.$deferredAction)
-        finishAddStubsHelper(constructor.prototype);
+      if (prototype.$isInterceptor)
+        prototype.$deferredAction();
     }
     var properties = Object.keys(processedClasses.pending);
     for (var i = 0; i < properties.length; i++)
       finishClass(properties[i]);
   }
-  function finishAddStubsHelper(prototype) {
-    var prototype = prototype || this;
-    var object;
-    while (prototype.$deferredAction != markerFun) {
-      if (prototype.hasOwnProperty("$deferredAction")) {
+  function finishAddStubsHelper() {
+    var prototype = this;
+    while (!prototype.hasOwnProperty("$deferredAction"))
+      prototype = prototype.__proto__;
+    delete prototype.$deferredAction;
+    var properties = Object.keys(prototype);
+    for (var index = 0; index < properties.length; index++) {
+      var property = properties[index];
+      var firstChar = property.charCodeAt(0);
+      var elem;
+      if (property !== "^" && property !== "$reflectable" && firstChar !== 43 && firstChar !== 42 && (elem = prototype[property]) != null && elem.constructor === Array && property !== "<>")
+        addStubs(prototype, elem, property, false, []);
+    }
+    convertToFastObject(prototype);
+    prototype = prototype.__proto__;
+    prototype.$deferredAction();
+  }
+  function mixinDeferredActionHelper(mixinPrototype, targetPrototype) {
+    var chain;
+    if (targetPrototype.hasOwnProperty("$deferredAction"))
+      chain = targetPrototype.$deferredAction;
+    return function foo() {
+      var prototype = this;
+      while (!prototype.hasOwnProperty("$deferredAction"))
+        prototype = prototype.__proto__;
+      if (chain)
+        prototype.$deferredAction = chain;
+      else {
         delete prototype.$deferredAction;
-        var properties = Object.keys(prototype);
-        for (var index = 0; index < properties.length; index++) {
-          var property = properties[index];
-          var firstChar = property.charCodeAt(0);
-          var elem;
-          if (property !== "^" && property !== "$reflectable" && firstChar !== 43 && firstChar !== 42 && (elem = prototype[property]) != null && elem.constructor === Array && property !== "<>")
-            addStubs(prototype, elem, property, false, []);
-        }
         convertToFastObject(prototype);
       }
-      prototype = prototype.__proto__;
-    }
+      mixinPrototype.$deferredAction();
+      prototype.$deferredAction();
+    };
   }
   function processClassData(cls, descriptor, processedClasses) {
     descriptor = convertToSlowObject(descriptor);
@@ -609,7 +627,7 @@ var dart = [
       return H.setRuntimeTypeInfo(new H.MappedListIterable(receiver, f), [null, null]);
     },
     elementAt$1: function(receiver, index) {
-      if (index < 0 || index >= receiver.length)
+      if (index >>> 0 !== index || index >= receiver.length)
         return H.ioore(receiver, index);
       return receiver[index];
     },
@@ -688,9 +706,9 @@ var dart = [
     $isEfficientLength: 1
   },
   ArrayIterator: {
-    "^": "Object;__interceptors$_iterable,__interceptors$_length,_index,__interceptors$_current",
+    "^": "Object;__interceptors$_iterable,__interceptors$_length,__interceptors$_index,_current",
     get$current: function() {
-      return this.__interceptors$_current;
+      return this._current;
     },
     moveNext$0: function() {
       var t1, $length, t2;
@@ -698,13 +716,13 @@ var dart = [
       $length = t1.length;
       if (this.__interceptors$_length !== $length)
         throw H.wrapException(P.ConcurrentModificationError$(t1));
-      t2 = this._index;
+      t2 = this.__interceptors$_index;
       if (t2 >= $length) {
-        this.__interceptors$_current = null;
+        this._current = null;
         return false;
       }
-      this.__interceptors$_current = t1[t2];
-      this._index = t2 + 1;
+      this._current = t1[t2];
+      this.__interceptors$_index = t2 + 1;
       return true;
     }
   },
@@ -815,6 +833,9 @@ var dart = [
     },
     substring$1: function($receiver, startIndex) {
       return this.substring$2($receiver, startIndex, null);
+    },
+    toLowerCase$0: function(receiver) {
+      return receiver.toLowerCase();
     },
     trim$0: function(receiver) {
       var result, endIndex, startIndex, t1, endIndex0;
@@ -1205,7 +1226,7 @@ var dart = [
         t1 = [];
         this.doneHandlers = t1;
       }
-      if (J.contains$1$asx(t1, responsePort))
+      if ((t1 && C.JSArray_methods).contains$1(t1, responsePort))
         return;
       this.doneHandlers.push(responsePort);
     },
@@ -1213,7 +1234,7 @@ var dart = [
       var t1 = this.doneHandlers;
       if (t1 == null)
         return;
-      J.remove$1$ax(t1, responsePort);
+      (t1 && C.JSArray_methods).remove$1(t1, responsePort);
     },
     setErrorsFatal$2: function(authentification, errorsAreFatal) {
       if (!this.terminateCapability.$eq(0, authentification))
@@ -1332,7 +1353,7 @@ var dart = [
       t1.$indexSet(0, portId, port);
     },
     _updateGlobalState$0: function() {
-      if (this.ports._length - this.weakPorts._collection$_length > 0 || this.isPaused || !this.initialized)
+      if (this.ports.__js_helper$_length - this.weakPorts._collection$_length > 0 || this.isPaused || !this.initialized)
         init.globalState.isolates.$indexSet(0, this.id, this);
       else
         this.kill$0();
@@ -1343,7 +1364,7 @@ var dart = [
       if (t1 != null)
         t1.clear$0(0);
       for (t1 = this.ports, t2 = t1.get$values(t1), t2 = H.setRuntimeTypeInfo(new H.MappedIterator(null, J.get$iterator$ax(t2._iterable), t2._f), [H.getTypeArgumentByIndex(t2, 0), H.getTypeArgumentByIndex(t2, 1)]); t2.moveNext$0();)
-        t2._current.__isolate_helper$_close$0();
+        t2.__internal$_current.__isolate_helper$_close$0();
       t1.clear$0(0);
       this.weakPorts.clear$0(0);
       init.globalState.isolates.remove$1(0, this.id);
@@ -1351,7 +1372,7 @@ var dart = [
       t1 = this.doneHandlers;
       if (t1 != null) {
         for (t1 = new J.ArrayIterator(t1, t1.length, 0, null); t1.moveNext$0();)
-          t1.__interceptors$_current.send$1(null);
+          t1._current.send$1(null);
         this.doneHandlers = null;
       }
     }, "call$0", "get$kill", 0, 0, 1]
@@ -1374,10 +1395,10 @@ var dart = [
       var $event, t1, t2;
       $event = this.dequeue$0();
       if ($event == null) {
-        if (init.globalState.rootContext != null && init.globalState.isolates.containsKey$1(init.globalState.rootContext.id) && init.globalState.fromCommandLine === true && init.globalState.rootContext.ports._length === 0)
+        if (init.globalState.rootContext != null && init.globalState.isolates.containsKey$1(init.globalState.rootContext.id) && init.globalState.fromCommandLine === true && init.globalState.rootContext.ports.__js_helper$_length === 0)
           H.throwExpression(P.Exception_Exception("Program exited with open ReceivePorts."));
         t1 = init.globalState;
-        if (t1.isWorker === true && t1.isolates._length === 0 && t1.topEventLoop._activeJsAsyncCount === 0) {
+        if (t1.isWorker === true && t1.isolates.__js_helper$_length === 0 && t1.topEventLoop._activeJsAsyncCount === 0) {
           t1 = t1.mainManager;
           t2 = P.LinkedHashMap_LinkedHashMap$_literal(["command", "close"], null, null);
           t2 = new H._Serializer(true, P.LinkedHashMap_LinkedHashMap$identity(null, P.$int)).serialize$1(t2);
@@ -1673,7 +1694,7 @@ var dart = [
       serializationId = t1.$index(0, x);
       if (serializationId != null)
         return ["ref", serializationId];
-      t1.$indexSet(0, x, t1._length);
+      t1.$indexSet(0, x, t1.__js_helper$_length);
       t1 = J.getInterceptor(x);
       if (!!t1.$isNativeByteBuffer)
         return ["buffer", x];
@@ -1989,7 +2010,7 @@ var dart = [
     return hash;
   },
   Primitives__parseIntError: function(source, handleError) {
-    throw H.wrapException(new P.FormatException(source, null, null));
+    throw H.wrapException(P.FormatException$(source, null, null));
   },
   Primitives_parseInt: function(source, radix, handleError) {
     var match, decimalMatch;
@@ -3028,7 +3049,7 @@ var dart = [
     "^": "Closure;"
   },
   BoundClosure: {
-    "^": "TearOffClosure;_self,__js_helper$_target,_receiver,__js_helper$_name",
+    "^": "TearOffClosure;_self,_target,_receiver,__js_helper$_name",
     $eq: function(_, other) {
       if (other == null)
         return false;
@@ -3036,7 +3057,7 @@ var dart = [
         return true;
       if (!(other instanceof H.BoundClosure))
         return false;
-      return this._self === other._self && this.__js_helper$_target === other.__js_helper$_target && this._receiver === other._receiver;
+      return this._self === other._self && this._target === other._target && this._receiver === other._receiver;
     },
     get$hashCode: function(_) {
       var t1, receiverHashCode;
@@ -3045,7 +3066,7 @@ var dart = [
         receiverHashCode = H.Primitives_objectHashCode(this._self);
       else
         receiverHashCode = typeof t1 !== "object" ? J.get$hashCode$(t1) : H.Primitives_objectHashCode(t1);
-      return (receiverHashCode ^ H.Primitives_objectHashCode(this.__js_helper$_target)) >>> 0;
+      return (receiverHashCode ^ H.Primitives_objectHashCode(this._target)) >>> 0;
     },
     static: {BoundClosure_selfOf: function(closure) {
         return closure._self;
@@ -3188,9 +3209,9 @@ var dart = [
     }
   },
   JsLinkedHashMap: {
-    "^": "Object;_length,_strings,_nums,_rest,_first,_last,_modifications",
+    "^": "Object;__js_helper$_length,_strings,_nums,_rest,_first,_last,_modifications",
     get$length: function(_) {
-      return this._length;
+      return this.__js_helper$_length;
     },
     get$keys: function() {
       return H.setRuntimeTypeInfo(new H.LinkedHashMapKeyIterable(this), [H.getTypeArgumentByIndex(this, 0)]);
@@ -3307,13 +3328,13 @@ var dart = [
       return cell.get$hashMapCellValue();
     },
     clear$0: function(_) {
-      if (this._length > 0) {
+      if (this.__js_helper$_length > 0) {
         this._last = null;
         this._first = null;
         this._rest = null;
         this._nums = null;
         this._strings = null;
-        this._length = 0;
+        this.__js_helper$_length = 0;
         this._modifications = this._modifications + 1 & 67108863;
       }
     },
@@ -3358,7 +3379,7 @@ var dart = [
         last._next = cell;
         this._last = cell;
       }
-      ++this._length;
+      ++this.__js_helper$_length;
       this._modifications = this._modifications + 1 & 67108863;
       return cell;
     },
@@ -3374,7 +3395,7 @@ var dart = [
         this._last = previous;
       else
         next._previous = previous;
-      --this._length;
+      --this.__js_helper$_length;
       this._modifications = this._modifications + 1 & 67108863;
     },
     internalComputeHashCode$1: function(key) {
@@ -3413,7 +3434,7 @@ var dart = [
   LinkedHashMapKeyIterable: {
     "^": "IterableBase;_map",
     get$length: function(_) {
-      return this._map._length;
+      return this._map.__js_helper$_length;
     },
     get$iterator: function(_) {
       var t1, t2;
@@ -3475,6 +3496,29 @@ var dart = [
     call$1: function(tag) {
       return this._captured_prototypeForTag_2(tag);
     }
+  },
+  JSSyntaxRegExp: {
+    "^": "Object;pattern,_nativeRegExp,_nativeGlobalRegExp,_nativeAnchoredRegExp",
+    toString$0: function(_) {
+      return "RegExp/" + this.pattern + "/";
+    },
+    static: {JSSyntaxRegExp_makeNative: function(source, multiLine, caseSensitive, global) {
+        var m, i, g, regexp;
+        H.checkString(source);
+        m = multiLine ? "m" : "";
+        i = caseSensitive ? "" : "i";
+        g = global ? "g" : "";
+        regexp = function() {
+          try {
+            return new RegExp(source, m + i + g);
+          } catch (e) {
+            return e;
+          }
+        }();
+        if (regexp instanceof RegExp)
+          return regexp;
+        throw H.wrapException(P.FormatException$("Illegal RegExp pattern (" + String(regexp) + ")", source, null));
+      }}
   }
 }],
 ["dart._internal", "dart:_internal", , H, {
@@ -3531,24 +3575,24 @@ var dart = [
     $isEfficientLength: 1
   },
   ListIterator: {
-    "^": "Object;_iterable,__internal$_length,__internal$_index,_current",
+    "^": "Object;_iterable,_length,_index,__internal$_current",
     get$current: function() {
-      return this._current;
+      return this.__internal$_current;
     },
     moveNext$0: function() {
       var t1, t2, $length, t3;
       t1 = this._iterable;
       t2 = J.getInterceptor$asx(t1);
       $length = t2.get$length(t1);
-      if (this.__internal$_length !== $length)
+      if (this._length !== $length)
         throw H.wrapException(P.ConcurrentModificationError$(t1));
-      t3 = this.__internal$_index;
+      t3 = this._index;
       if (t3 >= $length) {
-        this._current = null;
+        this.__internal$_current = null;
         return false;
       }
-      this._current = t2.elementAt$1(t1, t3);
-      ++this.__internal$_index;
+      this.__internal$_current = t2.elementAt$1(t1, t3);
+      ++this._index;
       return true;
     }
   },
@@ -3576,18 +3620,18 @@ var dart = [
     $isEfficientLength: 1
   },
   MappedIterator: {
-    "^": "Iterator;_current,_iterator,_f",
+    "^": "Iterator;__internal$_current,_iterator,_f",
     moveNext$0: function() {
       var t1 = this._iterator;
       if (t1.moveNext$0()) {
-        this._current = this._f$1(t1.get$current());
+        this.__internal$_current = this._f$1(t1.get$current());
         return true;
       }
-      this._current = null;
+      this.__internal$_current = null;
       return false;
     },
     get$current: function() {
-      return this._current;
+      return this.__internal$_current;
     },
     _f$1: function(arg0) {
       return this._f.call$1(arg0);
@@ -3637,6 +3681,21 @@ var dart = [
   },
   FixedLengthListMixin: {
     "^": "Object;"
+  },
+  UnmodifiableListMixin: {
+    "^": "Object;",
+    $indexSet: function(_, index, value) {
+      throw H.wrapException(P.UnsupportedError$("Cannot modify an unmodifiable list"));
+    },
+    $isList: 1,
+    $asList: null,
+    $isEfficientLength: 1
+  },
+  UnmodifiableListBase: {
+    "^": "ListBase+UnmodifiableListMixin;",
+    $isList: 1,
+    $asList: null,
+    $isEfficientLength: 1
   }
 }],
 ["dart._js_names", "dart:_js_names", , H, {
@@ -3667,14 +3726,14 @@ var dart = [
   _AsyncRun__scheduleImmediateJsOverride: [function(callback) {
     ++init.globalState.topEventLoop._activeJsAsyncCount;
     self.scheduleImmediate(H.convertDartClosureToJS(new P._AsyncRun__scheduleImmediateJsOverride_internalCallback(callback), 0));
-  }, "call$1", "_AsyncRun__scheduleImmediateJsOverride$closure", 2, 0, 22],
+  }, "call$1", "_AsyncRun__scheduleImmediateJsOverride$closure", 2, 0, 24],
   _AsyncRun__scheduleImmediateWithSetImmediate: [function(callback) {
     ++init.globalState.topEventLoop._activeJsAsyncCount;
     self.setImmediate(H.convertDartClosureToJS(new P._AsyncRun__scheduleImmediateWithSetImmediate_internalCallback(callback), 0));
-  }, "call$1", "_AsyncRun__scheduleImmediateWithSetImmediate$closure", 2, 0, 22],
+  }, "call$1", "_AsyncRun__scheduleImmediateWithSetImmediate$closure", 2, 0, 24],
   _AsyncRun__scheduleImmediateWithTimer: [function(callback) {
     P.Timer__createTimer(C.Duration_0, callback);
-  }, "call$1", "_AsyncRun__scheduleImmediateWithTimer$closure", 2, 0, 22],
+  }, "call$1", "_AsyncRun__scheduleImmediateWithTimer$closure", 2, 0, 24],
   _registerErrorHandler: function(errorHandler, zone) {
     var t1 = H.getDynamicRuntimeType();
     t1 = H.buildFunctionType(t1, [t1, t1])._isTest$1(errorHandler);
@@ -3766,7 +3825,7 @@ var dart = [
     }
   },
   _nullDataHandler: [function(value) {
-  }, "call$1", "_nullDataHandler$closure", 2, 0, 23],
+  }, "call$1", "_nullDataHandler$closure", 2, 0, 25],
   _nullErrorHandler: [function(error, stackTrace) {
     var t1 = $.Zone__current;
     t1.toString;
@@ -5209,9 +5268,9 @@ var dart = [
     }
   },
   _cancelAndValue_closure: {
-    "^": "Closure:0;_captured_future_0,_async$_captured_value_1",
+    "^": "Closure:0;_captured_future_0,_captured_value_1",
     call$0: function() {
-      return this._captured_future_0._complete$1(this._async$_captured_value_1);
+      return this._captured_future_0._complete$1(this._captured_value_1);
     }
   },
   _ForwardingStream: {
@@ -5453,10 +5512,10 @@ var dart = [
   },
   _defaultEquals: [function(a, b) {
     return J.$eq(a, b);
-  }, "call$2", "_defaultEquals$closure", 4, 0, 24],
+  }, "call$2", "_defaultEquals$closure", 4, 0, 26],
   _defaultHashCode: [function(a) {
     return J.get$hashCode$(a);
-  }, "call$1", "_defaultHashCode$closure", 2, 0, 25],
+  }, "call$1", "_defaultHashCode$closure", 2, 0, 27],
   IterableBase_iterableToShortString: function(iterable, leftDelimiter, rightDelimiter) {
     var parts, t1;
     if (P.IterableBase__isToStringVisiting(iterable)) {
@@ -5622,7 +5681,7 @@ var dart = [
     return t1.charCodeAt(0) == 0 ? t1 : t1;
   },
   _LinkedIdentityHashMap: {
-    "^": "JsLinkedHashMap;_length,_strings,_nums,_rest,_first,_last,_modifications",
+    "^": "JsLinkedHashMap;__js_helper$_length,_strings,_nums,_rest,_first,_last,_modifications",
     internalComputeHashCode$1: function(key) {
       return H.objectHashCode(key) & 0x3ffffff;
     },
@@ -5871,6 +5930,18 @@ var dart = [
       }
     }
   },
+  UnmodifiableListView: {
+    "^": "UnmodifiableListBase;_collection$_source",
+    get$length: function(_) {
+      return this._collection$_source.length;
+    },
+    $index: function(_, index) {
+      var t1 = this._collection$_source;
+      if (index >>> 0 !== index || index >= t1.length)
+        return H.ioore(t1, index);
+      return t1[index];
+    }
+  },
   _HashSetBase: {
     "^": "SetBase;"
   },
@@ -5939,6 +6010,21 @@ var dart = [
           throw H.wrapException(P.ConcurrentModificationError$(receiver));
       }
     },
+    firstWhere$2$orElse: function(receiver, test, orElse) {
+      var $length, i, element;
+      $length = this.get$length(receiver);
+      for (i = 0; i < $length; ++i) {
+        element = this.$index(receiver, i);
+        if (test.call$1(element) === true)
+          return element;
+        if ($length !== this.get$length(receiver))
+          throw H.wrapException(P.ConcurrentModificationError$(receiver));
+      }
+      throw H.wrapException(H.IterableElementError_noElement());
+    },
+    firstWhere$1: function($receiver, test) {
+      return this.firstWhere$2$orElse($receiver, test, null);
+    },
     where$1: function(receiver, test) {
       return H.setRuntimeTypeInfo(new H.WhereIterable(receiver, test), [H.getRuntimeTypeArgument(receiver, "ListMixin", 0)]);
     },
@@ -5963,6 +6049,18 @@ var dart = [
     toList$0: function($receiver) {
       return this.toList$1$growable($receiver, true);
     },
+    indexOf$2: function(receiver, element, startIndex) {
+      var i;
+      if (startIndex >= this.get$length(receiver))
+        return -1;
+      for (i = startIndex; i < this.get$length(receiver); ++i)
+        if (J.$eq(this.$index(receiver, i), element))
+          return i;
+      return -1;
+    },
+    indexOf$1: function($receiver, element) {
+      return this.indexOf$2($receiver, element, 0);
+    },
     toString$0: function(receiver) {
       return P.IterableBase_iterableToFullString(receiver, "[", "]");
     },
@@ -5971,10 +6069,10 @@ var dart = [
     $isEfficientLength: 1
   },
   Maps_mapToString_closure: {
-    "^": "Closure:12;_collection$_box_0,_captured_result_1",
+    "^": "Closure:12;_box_0,_captured_result_1",
     call$2: function(k, v) {
       var t1, t2;
-      t1 = this._collection$_box_0;
+      t1 = this._box_0;
       if (!t1._captured_first_0)
         this._captured_result_1._contents += ", ";
       t1._captured_first_0 = false;
@@ -6160,10 +6258,10 @@ var dart = [
   },
   identical: [function(a, b) {
     return a == null ? b == null : a === b;
-  }, "call$2", "identical$closure", 4, 0, 26],
+  }, "call$2", "identical$closure", 4, 0, 28],
   identityHashCode: [function(object) {
     return H.objectHashCode(object);
-  }, "call$1", "identityHashCode$closure", 2, 0, 27],
+  }, "call$1", "identityHashCode$closure", 2, 0, 29],
   List_List$from: function(elements, growable, $E) {
     var list, t1;
     list = H.setRuntimeTypeInfo([], [$E]);
@@ -6179,9 +6277,9 @@ var dart = [
     H.printString(line);
   },
   NoSuchMethodError_toString_closure: {
-    "^": "Closure:13;_box_0",
+    "^": "Closure:13;_core$_box_0",
     call$2: function(key, value) {
-      var t1 = this._box_0;
+      var t1 = this._core$_box_0;
       if (t1._captured_i_1 > 0)
         t1._captured_sb_0._contents += ", ";
       P._symbolToString(key);
@@ -6293,6 +6391,8 @@ var dart = [
     },
     static: {ArgumentError$: function(message) {
         return new P.ArgumentError(false, null, null, message);
+      }, ArgumentError$value: function(value, $name, message) {
+        return new P.ArgumentError(true, value, $name, message);
       }}
   },
   RangeError: {
@@ -6381,10 +6481,7 @@ var dart = [
   ConcurrentModificationError: {
     "^": "Error;modifiedObject",
     toString$0: function(_) {
-      var t1 = this.modifiedObject;
-      if (t1 == null)
-        return "Concurrent modification during iteration.";
-      return "Concurrent modification during iteration: " + H.S(P.Error_safeToString(t1)) + ".";
+      return "Concurrent modification during iteration: " + H.S(P.Error_safeToString(this.modifiedObject)) + ".";
     },
     static: {ConcurrentModificationError$: function(modifiedObject) {
         return new P.ConcurrentModificationError(modifiedObject);
@@ -6418,11 +6515,19 @@ var dart = [
   FormatException: {
     "^": "Object;message,source,offset",
     toString$0: function(_) {
-      var t1, report;
+      var t1, report, source;
       t1 = this.message;
       report = t1 != null && "" !== t1 ? "FormatException: " + H.S(t1) : "FormatException";
-      return report;
-    }
+      source = this.source;
+      if (typeof source !== "string")
+        return report;
+      if (source.length > 78)
+        source = J.substring$2$s(source, 0, 75) + "...";
+      return report + "\n" + H.S(source);
+    },
+    static: {FormatException$: function(message, source, offset) {
+        return new P.FormatException(message, source, offset);
+      }}
   },
   Expando: {
     "^": "Object;name>",
@@ -6537,7 +6642,21 @@ var dart = [
     else if (P.Device_isOpera() === true)
       return "oTransitionEnd";
     return "transitionend";
-  }, "call$1", "Element__determineTransitionEventType$closure", 2, 0, 28],
+  }, "call$1", "Element__determineTransitionEventType$closure", 2, 0, 30],
+  InputElement_InputElement: function(type) {
+    var e, exception;
+    e = document.createElement("input", null);
+    if (type != null)
+      try {
+        J.set$type$x(e, type);
+      } catch (exception) {
+        H.unwrapException(exception);
+      }
+    return e;
+  },
+  OptionElement_OptionElement$_: function(data, value, defaultSelected, selected) {
+    return new Option(data, value, defaultSelected, selected);
+  },
   _JenkinsSmiHash_combine: function(hash, value) {
     hash = 536870911 & hash + value;
     hash = 536870911 & hash + ((524287 & hash) << 10 >>> 0);
@@ -6581,10 +6700,10 @@ var dart = [
     $isNode: 1,
     $isEventTarget: 1,
     $isObject: 1,
-    "%": "HTMLAppletElement|HTMLBRElement|HTMLCanvasElement|HTMLDListElement|HTMLDataListElement|HTMLDetailsElement|HTMLDialogElement|HTMLDirectoryElement|HTMLDivElement|HTMLFontElement|HTMLFrameElement|HTMLHRElement|HTMLHeadElement|HTMLHeadingElement|HTMLHtmlElement|HTMLImageElement|HTMLLabelElement|HTMLLegendElement|HTMLLinkElement|HTMLMarqueeElement|HTMLMenuElement|HTMLMenuItemElement|HTMLModElement|HTMLOListElement|HTMLOptGroupElement|HTMLParagraphElement|HTMLPictureElement|HTMLPreElement|HTMLQuoteElement|HTMLScriptElement|HTMLShadowElement|HTMLSourceElement|HTMLSpanElement|HTMLStyleElement|HTMLTableCaptionElement|HTMLTableCellElement|HTMLTableColElement|HTMLTableDataCellElement|HTMLTableElement|HTMLTableHeaderCellElement|HTMLTableRowElement|HTMLTableSectionElement|HTMLTemplateElement|HTMLTitleElement|HTMLTrackElement|HTMLUListElement|HTMLUnknownElement|PluginPlaceholderElement;HTMLElement"
+    "%": "HTMLAppletElement|HTMLBRElement|HTMLCanvasElement|HTMLDListElement|HTMLDetailsElement|HTMLDialogElement|HTMLDirectoryElement|HTMLDivElement|HTMLFontElement|HTMLFrameElement|HTMLHRElement|HTMLHeadElement|HTMLHeadingElement|HTMLHtmlElement|HTMLImageElement|HTMLLegendElement|HTMLMarqueeElement|HTMLModElement|HTMLParagraphElement|HTMLPictureElement|HTMLPreElement|HTMLQuoteElement|HTMLShadowElement|HTMLSpanElement|HTMLTableCaptionElement|HTMLTableCellElement|HTMLTableColElement|HTMLTableDataCellElement|HTMLTableElement|HTMLTableHeaderCellElement|HTMLTableRowElement|HTMLTableSectionElement|HTMLTemplateElement|HTMLTitleElement|HTMLTrackElement|HTMLUListElement|HTMLUnknownElement|PluginPlaceholderElement;HTMLElement"
   },
   AnchorElement: {
-    "^": "HtmlElement;target=",
+    "^": "HtmlElement;target=,type}",
     toString$0: function(receiver) {
       return String(receiver);
     },
@@ -6614,7 +6733,7 @@ var dart = [
     "%": "HTMLBodyElement"
   },
   ButtonElement: {
-    "^": "HtmlElement;name=,value=",
+    "^": "HtmlElement;disabled},name%,type},value%",
     $isButtonElement: 1,
     "%": "HTMLButtonElement"
   },
@@ -6647,24 +6766,19 @@ var dart = [
         return receiver.getPropertyValue(P.Device_cssPrefix() + propertyName);
     },
     setProperty$3: function(receiver, propertyName, value, priority) {
-      if (W.CssStyleDeclaration__camelCase(propertyName) in receiver)
-        return this._setPropertyHelper$3(receiver, propertyName, value, priority);
-      else
-        return this._setPropertyHelper$3(receiver, P.Device_cssPrefix() + propertyName, value, priority);
+      var t1 = this._browserPropertyName$1(receiver, propertyName);
+      receiver.setProperty(t1, value, priority);
+      return;
     },
-    _setPropertyHelper$3: function(receiver, propertyName, value, priority) {
-      var exception;
-      try {
-        if (value == null)
-          value = "";
-        if (priority == null)
-          priority = "";
-        receiver.setProperty(propertyName, value, priority);
-        if (!!receiver.setAttribute)
-          receiver.setAttribute(propertyName, value);
-      } catch (exception) {
-        H.unwrapException(exception);
-      }
+    _browserPropertyName$1: function(receiver, propertyName) {
+      var t1, $name;
+      t1 = $.get$CssStyleDeclaration__propertyCache();
+      $name = t1[propertyName];
+      if (typeof $name === "string")
+        return $name;
+      $name = W.CssStyleDeclaration__camelCase(propertyName) in receiver ? propertyName : P.Device_cssPrefix() + propertyName;
+      t1[propertyName] = $name;
+      return $name;
     },
     "%": "CSS2Properties|CSSStyleDeclaration|MSStyleCSSProperties"
   },
@@ -6679,6 +6793,11 @@ var dart = [
     },
     setProperty$3: function(_, propertyName, value, priority) {
       this._elementCssStyleDeclarationSetIterable.forEach$1(0, new W._CssStyleDeclarationSet_setProperty_closure(propertyName, value, priority));
+    },
+    _setAll$2: function(propertyName, value) {
+      var t1;
+      for (t1 = this._elementIterable, t1 = t1.get$iterator(t1); t1.moveNext$0();)
+        t1.__internal$_current.style[propertyName] = value;
     },
     _CssStyleDeclarationSet$1: function(_elementIterable) {
       this._elementCssStyleDeclarationSetIterable = H.setRuntimeTypeInfo(new H.MappedListIterable(P.List_List$from(this._elementIterable, true, null), new W._CssStyleDeclarationSet_closure()), [null, null]);
@@ -6699,43 +6818,23 @@ var dart = [
     }
   },
   _CssStyleDeclarationSet_setProperty_closure: {
-    "^": "Closure:2;_captured_propertyName_0,_captured_value_1,_captured_priority_2",
+    "^": "Closure:2;_captured_propertyName_0,_html$_captured_value_1,_captured_priority_2",
     call$1: function(e) {
-      return J.setProperty$3$x(e, this._captured_propertyName_0, this._captured_value_1, this._captured_priority_2);
+      return J.setProperty$3$x(e, this._captured_propertyName_0, this._html$_captured_value_1, this._captured_priority_2);
     }
   },
   CssStyleDeclarationBase: {
     "^": "Object;",
-    set$backgroundColor: function(receiver, value) {
-      this.setProperty$3(receiver, "background-color", value, "");
-    },
-    set$color: function(receiver, value) {
-      this.setProperty$3(receiver, "color", value, "");
-    },
-    get$display: function(receiver) {
-      return this.getPropertyValue$1(receiver, "display");
-    },
-    set$display: function(receiver, value) {
-      this.setProperty$3(receiver, "display", value, "");
-    },
-    set$height: function(receiver, value) {
-      this.setProperty$3(receiver, "height", value, "");
-    },
-    get$maxHeight: function(receiver) {
-      return this.getPropertyValue$1(receiver, "max-height");
-    },
-    set$maxHeight: function(receiver, value) {
-      this.setProperty$3(receiver, "max-height", value, "");
+    get$opacity: function(receiver) {
+      return this.getPropertyValue$1(receiver, "opacity");
     },
     set$opacity: function(receiver, value) {
       this.setProperty$3(receiver, "opacity", value, "");
-    },
-    set$paddingBottom: function(receiver, value) {
-      this.setProperty$3(receiver, "padding-bottom", value, "");
-    },
-    set$paddingTop: function(receiver, value) {
-      this.setProperty$3(receiver, "padding-top", value, "");
     }
+  },
+  DataListElement: {
+    "^": "HtmlElement;options=",
+    "%": "HTMLDataListElement"
   },
   DeviceLightEvent: {
     "^": "Event;value=",
@@ -6816,8 +6915,16 @@ var dart = [
     $asRectangle: $.functionThatReturnsNull,
     "%": ";DOMRectReadOnly"
   },
+  DomSettableTokenList: {
+    "^": "DomTokenList;value=",
+    "%": "DOMSettableTokenList"
+  },
+  DomTokenList: {
+    "^": "Interceptor;length=",
+    "%": ";DOMTokenList"
+  },
   _ChildrenElementList: {
-    "^": "ListBase;_element,_childElements",
+    "^": "ListBase;_html$_element,_childElements",
     get$length: function(_) {
       return this._childElements.length;
     },
@@ -6831,15 +6938,30 @@ var dart = [
       var t1 = this._childElements;
       if (index < 0 || index >= t1.length)
         return H.ioore(t1, index);
-      this._element.replaceChild(value, t1[index]);
+      this._html$_element.replaceChild(value, t1[index]);
     },
     add$1: function(_, value) {
-      this._element.appendChild(value);
+      this._html$_element.appendChild(value);
       return value;
     },
     get$iterator: function(_) {
       var t1 = this.toList$0(this);
       return new J.ArrayIterator(t1, t1.length, 0, null);
+    },
+    insert$2: function(_, index, element) {
+      var t1, t2, t3;
+      if (index > this._childElements.length)
+        throw H.wrapException(P.RangeError$range(index, 0, this.get$length(this), null, null));
+      t1 = this._childElements;
+      t2 = t1.length;
+      t3 = this._html$_element;
+      if (index === t2)
+        t3.appendChild(element);
+      else {
+        if (index >= t2)
+          return H.ioore(t1, index);
+        t3.insertBefore(element, t1[index]);
+      }
     },
     $asListBase: function() {
       return [W.Element];
@@ -6871,7 +6993,7 @@ var dart = [
     $isEfficientLength: 1
   },
   Element: {
-    "^": "Node;className%,style=",
+    "^": "Node;style=",
     get$children: function(receiver) {
       return new W._ChildrenElementList(receiver, receiver.children);
     },
@@ -6884,8 +7006,17 @@ var dart = [
     click$0: function(receiver) {
       return receiver.click();
     },
+    get$onChange: function(receiver) {
+      return C.EventStreamProvider_change.forElement$1(receiver);
+    },
     get$onClick: function(receiver) {
       return C.EventStreamProvider_click.forElement$1(receiver);
+    },
+    get$onKeyDown: function(receiver) {
+      return C.EventStreamProvider_keydown.forElement$1(receiver);
+    },
+    get$onKeyUp: function(receiver) {
+      return C.EventStreamProvider_keyup.forElement$1(receiver);
     },
     get$onMouseDown: function(receiver) {
       return C.EventStreamProvider_mousedown.forElement$1(receiver);
@@ -6898,7 +7029,7 @@ var dart = [
     "%": ";Element"
   },
   EmbedElement: {
-    "^": "HtmlElement;name=",
+    "^": "HtmlElement;name%,type}",
     "%": "HTMLEmbedElement"
   },
   ErrorEvent: {
@@ -6915,7 +7046,7 @@ var dart = [
     },
     $isEvent: 1,
     $isObject: 1,
-    "%": "AnimationPlayerEvent|ApplicationCacheErrorEvent|AudioProcessingEvent|AutocompleteErrorEvent|BeforeUnloadEvent|CustomEvent|DeviceMotionEvent|DeviceOrientationEvent|ExtendableEvent|FetchEvent|FontFaceSetLoadEvent|GamepadEvent|HashChangeEvent|IDBVersionChangeEvent|InstallEvent|MIDIConnectionEvent|MIDIMessageEvent|MediaKeyEvent|MediaKeyMessageEvent|MediaKeyNeededEvent|MediaQueryListEvent|MediaStreamEvent|MediaStreamTrackEvent|MessageEvent|MutationEvent|OfflineAudioCompletionEvent|OverflowEvent|PageTransitionEvent|PopStateEvent|ProgressEvent|PushEvent|RTCDTMFToneChangeEvent|RTCDataChannelEvent|RTCIceCandidateEvent|RelatedEvent|ResourceProgressEvent|SecurityPolicyViolationEvent|SpeechRecognitionEvent|StorageEvent|TrackEvent|WebGLContextEvent|WebKitAnimationEvent|XMLHttpRequestProgressEvent;ClipboardEvent|Event|InputEvent"
+    "%": "AnimationPlayerEvent|ApplicationCacheErrorEvent|AudioProcessingEvent|AutocompleteErrorEvent|BeforeUnloadEvent|CustomEvent|DeviceMotionEvent|DeviceOrientationEvent|ExtendableEvent|FetchEvent|FontFaceSetLoadEvent|GamepadEvent|HashChangeEvent|IDBVersionChangeEvent|InstallEvent|MIDIConnectionEvent|MIDIMessageEvent|MediaKeyEvent|MediaKeyMessageEvent|MediaKeyNeededEvent|MediaQueryListEvent|MediaStreamEvent|MediaStreamTrackEvent|MessageEvent|MutationEvent|OfflineAudioCompletionEvent|OverflowEvent|PageTransitionEvent|PopStateEvent|ProgressEvent|PushEvent|RTCDTMFToneChangeEvent|RTCDataChannelEvent|RTCIceCandidateEvent|RTCPeerConnectionIceEvent|RelatedEvent|ResourceProgressEvent|SecurityPolicyViolationEvent|SpeechRecognitionEvent|StorageEvent|TrackEvent|WebGLContextEvent|WebKitAnimationEvent|XMLHttpRequestProgressEvent;ClipboardEvent|Event|InputEvent"
   },
   EventTarget: {
     "^": "Interceptor;",
@@ -6938,7 +7069,7 @@ var dart = [
     "%": "MediaStream;EventTarget"
   },
   FieldSetElement: {
-    "^": "HtmlElement;name=",
+    "^": "HtmlElement;disabled},name%",
     "%": "HTMLFieldSetElement"
   },
   File: {
@@ -6950,7 +7081,7 @@ var dart = [
     "%": "FileError"
   },
   FormElement: {
-    "^": "HtmlElement;length=,name=,target=",
+    "^": "HtmlElement;length=,name%,target=",
     "%": "HTMLFormElement"
   },
   HtmlCollection: {
@@ -6997,11 +7128,11 @@ var dart = [
     $isEfficientLength: 1
   },
   IFrameElement: {
-    "^": "HtmlElement;name=",
+    "^": "HtmlElement;name%",
     "%": "HTMLIFrameElement"
   },
   InputElement: {
-    "^": "HtmlElement;name=,value=",
+    "^": "HtmlElement;checked=,disabled},name%,placeholder},type},value%",
     select$0: function(receiver) {
       return receiver.select();
     },
@@ -7014,16 +7145,34 @@ var dart = [
     $isInterceptor: 1,
     "%": "HTMLInputElement"
   },
+  KeyboardEvent: {
+    "^": "UIEvent;metaKey=",
+    get$keyCode: function(receiver) {
+      return receiver.keyCode;
+    },
+    $isKeyboardEvent: 1,
+    $isEvent: 1,
+    $isObject: 1,
+    "%": "KeyboardEvent"
+  },
   KeygenElement: {
-    "^": "HtmlElement;name=",
+    "^": "HtmlElement;disabled},name%",
     "%": "HTMLKeygenElement"
   },
   LIElement: {
-    "^": "HtmlElement;value=",
+    "^": "HtmlElement;value%",
     "%": "HTMLLIElement"
   },
+  LabelElement: {
+    "^": "HtmlElement;htmlFor}",
+    "%": "HTMLLabelElement"
+  },
+  LinkElement: {
+    "^": "HtmlElement;disabled},type}",
+    "%": "HTMLLinkElement"
+  },
   MapElement: {
-    "^": "HtmlElement;name=",
+    "^": "HtmlElement;name%",
     "%": "HTMLMapElement"
   },
   MediaElement: {
@@ -7038,16 +7187,24 @@ var dart = [
     "^": "Interceptor;code=",
     "%": "MediaKeyError"
   },
+  MenuElement: {
+    "^": "HtmlElement;type}",
+    "%": "HTMLMenuElement"
+  },
+  MenuItemElement: {
+    "^": "HtmlElement;checked=,disabled},type}",
+    "%": "HTMLMenuItemElement"
+  },
   MetaElement: {
-    "^": "HtmlElement;name=",
+    "^": "HtmlElement;name%",
     "%": "HTMLMetaElement"
   },
   MeterElement: {
-    "^": "HtmlElement;value=",
+    "^": "HtmlElement;value%",
     "%": "HTMLMeterElement"
   },
   MouseEvent: {
-    "^": "UIEvent;",
+    "^": "UIEvent;metaKey=",
     $isMouseEvent: 1,
     $isEvent: 1,
     $isObject: 1,
@@ -7163,20 +7320,34 @@ var dart = [
     },
     $isEfficientLength: 1
   },
+  OListElement: {
+    "^": "HtmlElement;type}",
+    "%": "HTMLOListElement"
+  },
   ObjectElement: {
-    "^": "HtmlElement;name=",
+    "^": "HtmlElement;name%,type}",
     "%": "HTMLObjectElement"
   },
+  OptGroupElement: {
+    "^": "HtmlElement;disabled}",
+    "%": "HTMLOptGroupElement"
+  },
   OptionElement: {
-    "^": "HtmlElement;value=",
+    "^": "HtmlElement;disabled},value%",
+    $isOptionElement: 1,
+    $isHtmlElement: 1,
+    $isElement: 1,
+    $isNode: 1,
+    $isEventTarget: 1,
+    $isObject: 1,
     "%": "HTMLOptionElement"
   },
   OutputElement: {
-    "^": "HtmlElement;name=,value=",
+    "^": "HtmlElement;name%,value%",
     "%": "HTMLOutputElement"
   },
   ParamElement: {
-    "^": "HtmlElement;name=,value=",
+    "^": "HtmlElement;name%,value%",
     "%": "HTMLParamElement"
   },
   PositionError: {
@@ -7188,11 +7359,20 @@ var dart = [
     "%": "ProcessingInstruction"
   },
   ProgressElement: {
-    "^": "HtmlElement;value=",
+    "^": "HtmlElement;value%",
     "%": "HTMLProgressElement"
   },
+  ScriptElement: {
+    "^": "HtmlElement;type}",
+    "%": "HTMLScriptElement"
+  },
   SelectElement: {
-    "^": "HtmlElement;length=,name=,value=",
+    "^": "HtmlElement;disabled},length=,name%,selectedIndex},value%",
+    get$options: function(receiver) {
+      var t1 = new W._FrozenElementList(receiver.querySelectorAll("option"));
+      t1 = t1.where$1(t1, new W.SelectElement_options_closure());
+      return H.setRuntimeTypeInfo(new P.UnmodifiableListView(P.List_List$from(t1, true, H.getRuntimeTypeArgument(t1, "IterableBase", 0))), [null]);
+    },
     $isSelectElement: 1,
     $isHtmlElement: 1,
     $isElement: 1,
@@ -7200,6 +7380,16 @@ var dart = [
     $isEventTarget: 1,
     $isObject: 1,
     "%": "HTMLSelectElement"
+  },
+  SelectElement_options_closure: {
+    "^": "Closure:2;",
+    call$1: function(e) {
+      return !!J.getInterceptor(e).$isOptionElement;
+    }
+  },
+  SourceElement: {
+    "^": "HtmlElement;type}",
+    "%": "HTMLSourceElement"
   },
   SpeechRecognitionError: {
     "^": "Event;error=",
@@ -7209,12 +7399,20 @@ var dart = [
     "^": "Event;name=",
     "%": "SpeechSynthesisEvent"
   },
+  StyleElement: {
+    "^": "HtmlElement;disabled},type}",
+    "%": "HTMLStyleElement"
+  },
   TextAreaElement: {
-    "^": "HtmlElement;name=,value=",
+    "^": "HtmlElement;disabled},name%,placeholder},value%",
     select$0: function(receiver) {
       return receiver.select();
     },
     "%": "HTMLTextAreaElement"
+  },
+  TouchEvent: {
+    "^": "UIEvent;metaKey=",
+    "%": "TouchEvent"
   },
   TransitionEvent: {
     "^": "Event;",
@@ -7224,7 +7422,7 @@ var dart = [
   },
   UIEvent: {
     "^": "Event;",
-    "%": "CompositionEvent|FocusEvent|KeyboardEvent|SVGZoomEvent|TextEvent|TouchEvent;UIEvent"
+    "%": "CompositionEvent|FocusEvent|SVGZoomEvent|TextEvent;UIEvent"
   },
   Window: {
     "^": "EventTarget;name=",
@@ -7351,19 +7549,40 @@ var dart = [
     $isEfficientLength: 1
   },
   _ElementCssClassSet: {
-    "^": "CssClassSetImpl;_element",
+    "^": "CssClassSetImpl;_html$_element",
     readClasses$0: function() {
       var s, t1, trimmed;
       s = P.LinkedHashSet_LinkedHashSet(null, null, null, P.String);
-      for (t1 = J.get$className$x(this._element).split(" "), t1 = new J.ArrayIterator(t1, t1.length, 0, null); t1.moveNext$0();) {
-        trimmed = J.trim$0$s(t1.__interceptors$_current);
+      for (t1 = this._html$_element.className.split(" "), t1 = new J.ArrayIterator(t1, t1.length, 0, null); t1.moveNext$0();) {
+        trimmed = J.trim$0$s(t1._current);
         if (trimmed.length !== 0)
           s.add$1(0, trimmed);
       }
       return s;
     },
     writeClasses$1: function(s) {
-      J.set$className$x(this._element, s.join$1(0, " "));
+      this._html$_element.className = s.join$1(0, " ");
+    },
+    get$length: function(_) {
+      return this._html$_element.classList.length;
+    },
+    contains$1: function(_, value) {
+      return typeof value === "string" && this._html$_element.classList.contains(value);
+    },
+    add$1: function(_, value) {
+      var list, t1;
+      list = this._html$_element.classList;
+      t1 = list.contains(value);
+      list.add(value);
+      return !t1;
+    },
+    remove$1: function(_, value) {
+      var list, removed, t1;
+      list = this._html$_element.classList;
+      removed = list.contains(value);
+      list.remove(value);
+      t1 = removed;
+      return t1;
     }
   },
   EventStreamProvider: {
@@ -7388,9 +7607,9 @@ var dart = [
     }
   },
   _EventStream: {
-    "^": "Stream;_target,_eventType,_useCapture",
+    "^": "Stream;_html$_target,_eventType,_useCapture",
     listen$4$cancelOnError$onDone$onError: function(onData, cancelOnError, onDone, onError) {
-      var t1 = new W._EventStreamSubscription(0, this._target, this._eventType, W._wrapZone(onData), this._useCapture);
+      var t1 = new W._EventStreamSubscription(0, this._html$_target, this._eventType, W._wrapZone(onData), this._useCapture);
       t1.$builtinTypeInfo = this.$builtinTypeInfo;
       t1._tryResume$0();
       return t1;
@@ -7400,7 +7619,7 @@ var dart = [
     }
   },
   _ElementEventStreamImpl: {
-    "^": "_EventStream;_target,_eventType,_useCapture"
+    "^": "_EventStream;_html$_target,_eventType,_useCapture"
   },
   _ElementListEventStreamImpl: {
     "^": "Stream;_targetList,_useCapture,_eventType",
@@ -7409,7 +7628,7 @@ var dart = [
       pool = H.setRuntimeTypeInfo(new W._StreamPool(null, P.LinkedHashMap_LinkedHashMap(null, null, null, [P.Stream, null], [P.StreamSubscription, null])), [null]);
       pool._controller = P.StreamController_StreamController$broadcast(pool.get$close(pool), null, true, null);
       for (t1 = this._targetList, t1 = t1.get$iterator(t1), t2 = this._eventType, t3 = this._useCapture; t1.moveNext$0();) {
-        t4 = new W._EventStream(t1._current, t2, t3);
+        t4 = new W._EventStream(t1.__internal$_current, t2, t3);
         t4.$builtinTypeInfo = [null];
         pool.add$1(0, t4);
       }
@@ -7425,17 +7644,17 @@ var dart = [
     }
   },
   _EventStreamSubscription: {
-    "^": "StreamSubscription;_pauseCount,_target,_eventType,_onData,_useCapture",
+    "^": "StreamSubscription;_pauseCount,_html$_target,_eventType,_onData,_useCapture",
     cancel$0: function() {
-      if (this._target == null)
+      if (this._html$_target == null)
         return;
       this._unlisten$0();
-      this._target = null;
+      this._html$_target = null;
       this._onData = null;
       return;
     },
     pause$1: function(_, resumeSignal) {
-      if (this._target == null)
+      if (this._html$_target == null)
         return;
       ++this._pauseCount;
       this._unlisten$0();
@@ -7444,7 +7663,7 @@ var dart = [
       return this.pause$1($receiver, null);
     },
     resume$0: function() {
-      if (this._target == null || this._pauseCount <= 0)
+      if (this._html$_target == null || this._pauseCount <= 0)
         return;
       --this._pauseCount;
       this._tryResume$0();
@@ -7452,12 +7671,12 @@ var dart = [
     _tryResume$0: function() {
       var t1 = this._onData;
       if (t1 != null && this._pauseCount <= 0)
-        J.addEventListener$3$x(this._target, this._eventType, t1, this._useCapture);
+        J.addEventListener$3$x(this._html$_target, this._eventType, t1, this._useCapture);
     },
     _unlisten$0: function() {
       var t1 = this._onData;
       if (t1 != null)
-        J.removeEventListener$3$x(this._target, this._eventType, t1, this._useCapture);
+        J.removeEventListener$3$x(this._html$_target, this._eventType, t1, this._useCapture);
     }
   },
   _StreamPool: {
@@ -7470,7 +7689,7 @@ var dart = [
       t2 = this._controller;
       t2 = t2.get$add(t2);
       this._controller.get$addError();
-      t2 = H.setRuntimeTypeInfo(new W._EventStreamSubscription(0, stream._target, stream._eventType, W._wrapZone(t2), stream._useCapture), [H.getTypeArgumentByIndex(stream, 0)]);
+      t2 = H.setRuntimeTypeInfo(new W._EventStreamSubscription(0, stream._html$_target, stream._eventType, W._wrapZone(t2), stream._useCapture), [H.getTypeArgumentByIndex(stream, 0)]);
       t2._tryResume$0();
       t1.$indexSet(0, stream, t2);
     },
@@ -7482,7 +7701,7 @@ var dart = [
     close$0: [function(_) {
       var t1, t2;
       for (t1 = this._subscriptions, t2 = t1.get$values(t1), t2 = H.setRuntimeTypeInfo(new H.MappedIterator(null, J.get$iterator$ax(t2._iterable), t2._f), [H.getTypeArgumentByIndex(t2, 0), H.getTypeArgumentByIndex(t2, 1)]); t2.moveNext$0();)
-        t2._current.cancel$0();
+        t2.__internal$_current.cancel$0();
       t1.clear$0(0);
       this._controller.close$0(0);
     }, "call$0", "get$close", 0, 0, 1]
@@ -7685,35 +7904,37 @@ var dart = [
     "%": "SVGPatternElement"
   },
   ScriptElement0: {
-    "^": "SvgElement;",
+    "^": "SvgElement;type}",
     $isInterceptor: 1,
     "%": "SVGScriptElement"
   },
+  StyleElement0: {
+    "^": "SvgElement;disabled},type}",
+    "%": "SVGStyleElement"
+  },
   _AttributeClassSet: {
-    "^": "CssClassSetImpl;_svg$_element",
+    "^": "CssClassSetImpl;_element",
     readClasses$0: function() {
       var classname, s, t1, trimmed;
-      classname = this._svg$_element.getAttribute("class");
+      classname = this._element.getAttribute("class");
       s = P.LinkedHashSet_LinkedHashSet(null, null, null, P.String);
       if (classname == null)
         return s;
       for (t1 = classname.split(" "), t1 = new J.ArrayIterator(t1, t1.length, 0, null); t1.moveNext$0();) {
-        trimmed = J.trim$0$s(t1.__interceptors$_current);
+        trimmed = J.trim$0$s(t1._current);
         if (trimmed.length !== 0)
           s.add$1(0, trimmed);
       }
       return s;
     },
     writeClasses$1: function(s) {
-      this._svg$_element.setAttribute("class", s.join$1(0, " "));
+      this._element.setAttribute("class", s.join$1(0, " "));
     }
   },
   SvgElement: {
     "^": "Element;",
     get$classes: function(receiver) {
-      if (receiver._cssClassSet == null)
-        receiver._cssClassSet = new P._AttributeClassSet(receiver);
-      return receiver._cssClassSet;
+      return new P._AttributeClassSet(receiver);
     },
     get$children: function(receiver) {
       return H.setRuntimeTypeInfo(new P.FilteredElementList(receiver, new W._ChildNodeListLazy(receiver)), [W.Element]);
@@ -7729,7 +7950,7 @@ var dart = [
     },
     $isEventTarget: 1,
     $isInterceptor: 1,
-    "%": "SVGAltGlyphDefElement|SVGAltGlyphItemElement|SVGComponentTransferFunctionElement|SVGDescElement|SVGDiscardElement|SVGFEDistantLightElement|SVGFEFuncAElement|SVGFEFuncBElement|SVGFEFuncGElement|SVGFEFuncRElement|SVGFEMergeNodeElement|SVGFEPointLightElement|SVGFESpotLightElement|SVGFontElement|SVGFontFaceElement|SVGFontFaceFormatElement|SVGFontFaceNameElement|SVGFontFaceSrcElement|SVGFontFaceUriElement|SVGGlyphElement|SVGHKernElement|SVGMetadataElement|SVGMissingGlyphElement|SVGStopElement|SVGStyleElement|SVGTitleElement|SVGVKernElement;SVGElement"
+    "%": "SVGAltGlyphDefElement|SVGAltGlyphItemElement|SVGComponentTransferFunctionElement|SVGDescElement|SVGDiscardElement|SVGFEDistantLightElement|SVGFEFuncAElement|SVGFEFuncBElement|SVGFEFuncGElement|SVGFEFuncRElement|SVGFEMergeNodeElement|SVGFEPointLightElement|SVGFESpotLightElement|SVGFontElement|SVGFontFaceElement|SVGFontFaceFormatElement|SVGFontFaceNameElement|SVGFontFaceSrcElement|SVGFontFaceUriElement|SVGGlyphElement|SVGHKernElement|SVGMetadataElement|SVGMissingGlyphElement|SVGStopElement|SVGTitleElement|SVGVKernElement;SVGElement"
   },
   SvgSvgElement: {
     "^": "GraphicsElement;",
@@ -8073,28 +8294,32 @@ var dart = [
     }]
   },
   ExtremeGenericGeekCodeCategoryBuilder: {
-    "^": "GenericGeekCodeCategoryBuilder;_extreme,_code,_wannabe,minGrade,maxGrade,_notRigid,_living,_noKnowledge,_refuse,_crossover",
+    "^": "GenericGeekCodeCategoryBuilder;_extreme,code,fullName,_wannabe,minGrade,maxGrade,_notRigid,_living,_noKnowledge,_refuse,_crossover",
     subValidate$3: function(grade, refuse, noKnowledge) {
-      return new Z.ExtremeGeekCodeCategory(this, this._extreme, this, this._code, this, grade);
+      return new Z.ExtremeGeekCodeCategory(this, this._extreme, this, this.code, this, grade);
     }
   },
   ExtremeGeekCodeCategory: {
     "^": "GeekCodeCategory;_builder:ExtremeGeekCodeCategory__builder<,_extreme,GeekCodeCategory__builder,code,_builder,_grade",
-    toString$0: function(_) {
+    toString$0: ["super$ExtremeGeekCodeCategory$toString$0", function(_) {
       var st, t1, i;
       st = this.super$GeekCodeCategory$toString$0(this);
       t1 = this._extreme;
-      if (t1 > 0)
-        for (i = 1; i <= t1; ++i)
+      if (J.$gt$n(t1, 0)) {
+        if (typeof t1 !== "number")
+          return H.iae(t1);
+        i = 1;
+        for (; i <= t1; ++i)
           st += "*";
+      }
       return st;
-    }
+    }]
   },
   GeekCodeCategoryBuilder: {
-    "^": "BasicGeekCodeCategoryBuilder;",
+    "^": "BasicGeekCodeCategoryBuilder;code>,maxGrade<",
     grade$1: function(grade) {
       var t1, t2, t3, t4;
-      if (C.JSString_methods.trim$0(this._code).length === 0)
+      if (C.JSString_methods.trim$0(this.code).length === 0)
         throw H.wrapException(Z.GeekCodeError$("code length must be > 0!"));
       t1 = this.minGrade;
       t2 = this.maxGrade;
@@ -8122,9 +8347,9 @@ var dart = [
     }]
   },
   GenericGeekCodeCategoryBuilder: {
-    "^": "GeekCodeCategoryBuilder;_code,_wannabe,minGrade,maxGrade,_notRigid,_living,_noKnowledge,_refuse,_crossover",
+    "^": "GeekCodeCategoryBuilder;code,fullName,_wannabe,minGrade,maxGrade,_notRigid,_living,_noKnowledge,_refuse,_crossover",
     subValidate$3: function(grade, refuse, noKnowledge) {
-      return new Z.GeekCodeCategory(this, this._code, this, grade);
+      return new Z.GeekCodeCategory(this, this.code, this, grade);
     }
   },
   GeekCode: {
@@ -8133,14 +8358,14 @@ var dart = [
       var st, t1, t2, types, categories;
       st = "-----BEGIN GEEK CODE BLOCK-----\nVersion: " + version + "\nG";
       for (t1 = this._types, t2 = new J.ArrayIterator(t1, t1.length, 0, null), types = 0; t2.moveNext$0();) {
-        st += H.S(t2.__interceptors$_current);
+        st += H.S(t2._current);
         ++types;
         if (types !== t1.length)
           st += "/";
       }
       st = types > 8 ? st + "\n" : st + " ";
       for (t1 = this._categories, t1 = t1.get$values(t1), t1 = H.setRuntimeTypeInfo(new H.MappedIterator(null, J.get$iterator$ax(t1._iterable), t1._f), [H.getTypeArgumentByIndex(t1, 0), H.getTypeArgumentByIndex(t1, 1)]), categories = types; t1.moveNext$0();) {
-        st += H.S(t1._current) + " ";
+        st += H.S(t1.__internal$_current) + " ";
         ++categories;
         if (C.JSInt_methods.$mod(categories, 8) === 0)
           st += "\n";
@@ -8150,10 +8375,10 @@ var dart = [
     toString$0: function(_) {
       var t1, st;
       for (t1 = this._types, t1 = new J.ArrayIterator(t1, t1.length, 0, null), st = "G"; t1.moveNext$0();)
-        st += H.S(t1.__interceptors$_current) + "/";
+        st += H.S(t1._current) + "/";
       st = C.JSString_methods.substring$2(st, 0, st.length - 1) + " ";
       for (t1 = this._categories, t1 = t1.get$values(t1), t1 = H.setRuntimeTypeInfo(new H.MappedIterator(null, J.get$iterator$ax(t1._iterable), t1._f), [H.getTypeArgumentByIndex(t1, 0), H.getTypeArgumentByIndex(t1, 1)]); t1.moveNext$0();)
-        st += H.S(t1._current) + " ";
+        st += H.S(t1.__internal$_current) + " ";
       return C.JSString_methods.trim$0(st);
     }
   },
@@ -8192,12 +8417,15 @@ var dart = [
     }
   },
   GeekCodeType: {
-    "^": "Object;_code",
+    "^": "Object;_code,_description",
     toString$0: function(_) {
       return this._code;
     },
-    static: {GeekCodeType$: function(_code) {
-        return new Z.GeekCodeType(_code);
+    get$description: function() {
+      return this._description;
+    },
+    static: {GeekCodeType$: function(_code, _description) {
+        return new Z.GeekCodeType(_code, _description);
       }}
   }
 }],
@@ -8207,135 +8435,146 @@ var dart = [
     var t1;
     switch (categoryCode) {
       case "d":
-        return new V.DressGeekCodeCategoryBuilder(false, false, "d", null, -2, 2, false, false, false, false, null);
+        return new V.DressGeekCodeCategoryBuilder(false, false, "d", "Dress", null, -3, 2, false, false, false, false, null);
       case "s":
-        return new V.ShapeGeekCodeCategoryBuilder(null, "s", null, -3, 3, false, false, false, false, null);
+        return new V.ShapeGeekCodeCategoryBuilder(null, "s", "Shape", null, -3, 3, false, false, false, false, null);
       case "a":
-        return new Z.GenericGeekCodeCategoryBuilder("a", null, -5, 3, false, false, false, false, null);
+        return new V.AgeGeekCodeCategoryBuilder(null, "a", "Age", null, -5, 3, false, false, false, false, null);
       case "C":
-        return new Z.GenericGeekCodeCategoryBuilder("C", null, -3, 4, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("C", "Computers", null, -3, 4, false, false, false, false, null);
       case "U":
-        return new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", null, -3, 4, false, false, false, false, null);
+        return new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", "Unix", null, -3, 4, false, false, false, false, null);
       case "UB":
-        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", null, -3, 4, false, false, false, false, null);
+        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", "Unix", null, -3, 4, false, false, false, false, null);
         t1._type = C.UnixType_0;
         return t1;
       case "UL":
-        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", null, -3, 4, false, false, false, false, null);
+        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", "Unix", null, -3, 4, false, false, false, false, null);
         t1._type = C.UnixType_1;
         return t1;
       case "UU":
-        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", null, -3, 4, false, false, false, false, null);
+        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", "Unix", null, -3, 4, false, false, false, false, null);
         t1._type = C.UnixType_2;
         return t1;
       case "UA":
-        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", null, -3, 4, false, false, false, false, null);
+        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", "Unix", null, -3, 4, false, false, false, false, null);
         t1._type = C.UnixType_3;
         return t1;
       case "UV":
-        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", null, -3, 4, false, false, false, false, null);
+        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", "Unix", null, -3, 4, false, false, false, false, null);
         t1._type = C.UnixType_4;
         return t1;
       case "UH":
-        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", null, -3, 4, false, false, false, false, null);
+        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", "Unix", null, -3, 4, false, false, false, false, null);
         t1._type = C.UnixType_5;
         return t1;
       case "UI":
-        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", null, -3, 4, false, false, false, false, null);
+        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", "Unix", null, -3, 4, false, false, false, false, null);
         t1._type = C.UnixType_6;
         return t1;
       case "UO":
-        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", null, -3, 4, false, false, false, false, null);
+        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", "Unix", null, -3, 4, false, false, false, false, null);
         t1._type = C.UnixType_7;
         return t1;
       case "US":
-        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", null, -3, 4, false, false, false, false, null);
+        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", "Unix", null, -3, 4, false, false, false, false, null);
         t1._type = C.UnixType_8;
         return t1;
       case "UC":
-        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", null, -3, 4, false, false, false, false, null);
+        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", "Unix", null, -3, 4, false, false, false, false, null);
         t1._type = C.UnixType_9;
         return t1;
       case "UX":
-        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", null, -3, 4, false, false, false, false, null);
+        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", "Unix", null, -3, 4, false, false, false, false, null);
         t1._type = C.UnixType_10;
         return t1;
       case "U*":
-        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", null, -3, 4, false, false, false, false, null);
+        t1 = new V.UnixGeekCodeCategoryBuilder(C.UnixType_12, "U", "Unix", null, -3, 4, false, false, false, false, null);
         t1._type = C.UnixType_11;
         return t1;
       case "P":
-        return new Z.GenericGeekCodeCategoryBuilder("P", null, -3, 5, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("P", "Perl", null, -3, 5, false, false, false, false, null);
       case "PS":
-        return new Z.GenericGeekCodeCategoryBuilder("PS", null, -3, 3, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("PS", "Political and Social Issues", null, -3, 3, false, false, false, false, null);
       case "PE":
-        return new Z.GenericGeekCodeCategoryBuilder("PE", null, -2, 3, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("PE", "Politics and Economic Issues", null, -2, 3, false, false, false, false, null);
       case "PGP":
-        return new Z.GenericGeekCodeCategoryBuilder("PGP", null, -4, 4, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("PGP", "PGP", null, -4, 4, false, false, false, false, null);
       case "L":
-        return new Z.GenericGeekCodeCategoryBuilder("L", null, -3, 5, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("L", "Linux", null, -3, 5, false, false, false, false, null);
       case "E":
-        return new Z.GenericGeekCodeCategoryBuilder("E", null, -4, 3, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("E", "Emacs", null, -4, 3, false, false, false, false, null);
       case "W":
-        return new Z.GenericGeekCodeCategoryBuilder("W", null, -2, 3, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("W", "World Wide Web", null, -2, 3, false, false, false, false, null);
       case "N":
-        return new Z.ExtremeGenericGeekCodeCategoryBuilder(0, "N", null, -4, 4, false, false, false, false, null);
+        return new Z.ExtremeGenericGeekCodeCategoryBuilder(0, "N", "USENET News", null, -4, 4, false, false, false, false, null);
       case "o":
-        return new Z.GenericGeekCodeCategoryBuilder("o", null, -2, 5, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("o", "USENET Oracle", null, -2, 5, false, false, false, false, null);
       case "K":
-        return new Z.GenericGeekCodeCategoryBuilder("K", null, -4, 6, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("K", "Kibo", null, -4, 6, false, false, false, false, null);
       case "w":
-        return new Z.GenericGeekCodeCategoryBuilder("w", null, -3, 5, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("w", "Microsoft Windows", null, -3, 5, false, false, false, false, null);
       case "O":
-        return new Z.GenericGeekCodeCategoryBuilder("O", null, -4, 3, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("O", "OS/2", null, -4, 3, false, false, false, false, null);
       case "M":
-        return new Z.GenericGeekCodeCategoryBuilder("M", null, -2, 2, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("M", "Macintosh", null, -2, 2, false, false, false, false, null);
       case "V":
-        return new Z.GenericGeekCodeCategoryBuilder("V", null, -2, 3, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("V", "VMS", null, -2, 3, false, false, false, false, null);
       case "Y":
-        return new Z.GenericGeekCodeCategoryBuilder("Y", null, -3, 3, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("Y", "Cypherpunks", null, -3, 3, false, false, false, false, null);
       case "t":
-        return new Z.ExtremeGenericGeekCodeCategoryBuilder(0, "t", null, -3, 3, false, false, false, false, null);
+        return new Z.ExtremeGenericGeekCodeCategoryBuilder(0, "t", "Star Trek", null, -3, 3, false, false, false, false, null);
       case "tv":
-        return new Z.GenericGeekCodeCategoryBuilder("tv", null, -2, 3, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("tv", "Television", null, -2, 3, false, false, false, false, null);
       case "5":
-        return new Z.GenericGeekCodeCategoryBuilder("5", null, -2, 4, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("5", "Babylon 5", null, -2, 4, false, false, false, false, null);
       case "X":
-        return new Z.GenericGeekCodeCategoryBuilder("X", null, -2, 4, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("X", "X-Files", null, -2, 4, false, false, false, false, null);
       case "R":
-        return new Z.ExtremeGenericGeekCodeCategoryBuilder(0, "R", null, -3, 3, false, false, false, false, null);
+        return new Z.ExtremeGenericGeekCodeCategoryBuilder(0, "R", "Role Playing", null, -3, 3, false, false, false, false, null);
       case "b":
-        return new Z.GenericGeekCodeCategoryBuilder("b", null, -2, 4, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("b", "Books", null, -2, 4, false, false, false, false, null);
       case "D":
-        return new Z.GenericGeekCodeCategoryBuilder("D", null, -4, 4, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("D", "DOOM!", null, -4, 4, false, false, false, false, null);
       case "DI":
-        return new Z.GenericGeekCodeCategoryBuilder("DI", null, -3, 5, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("DI", "Dilbert", null, -3, 5, false, false, false, false, null);
       case "G":
-        return new Z.GenericGeekCodeCategoryBuilder("G", null, -2, 5, false, false, false, false, null);
+        return new Z.GenericGeekCodeCategoryBuilder("G", "The Geek Code", null, -2, 5, false, false, false, false, null);
       case "e":
-        return new Z.ExtremeGenericGeekCodeCategoryBuilder(0, "e", null, -2, 5, false, false, false, false, null);
+        return new Z.ExtremeGenericGeekCodeCategoryBuilder(0, "e", "Education", null, -2, 5, false, false, false, false, null);
       case "h":
-        return new Z.ExtremeGenericGeekCodeCategoryBuilder(0, "h", null, -4, 2, false, false, false, false, null);
+        return new Z.ExtremeGenericGeekCodeCategoryBuilder(0, "h", "Housing", null, -4, 2, false, false, false, false, null);
       case "r":
-        return new Z.ExtremeGenericGeekCodeCategoryBuilder(0, "r", null, -3, 3, false, false, false, false, null);
+        return new V.RelationshipsGeekCodeCategoryBuilder(false, 0, "r", "Relationships", null, -3, 3, false, false, false, false, null);
       case "x":
-        t1 = new V.SexGeekCodeCategoryBuilder(C.Gender_2, 0, "z", null, -3, 5, false, false, false, false, null);
-        t1._gender = C.Gender_0;
-        return t1;
+        return new V.SexGeekCodeCategoryBuilder(C.Gender_2, 0, "z", "Sex", null, -3, 5, false, false, false, false, null).female$0();
       case "y":
-        t1 = new V.SexGeekCodeCategoryBuilder(C.Gender_2, 0, "z", null, -3, 5, false, false, false, false, null);
-        t1._gender = C.Gender_1;
-        return t1;
+        return new V.SexGeekCodeCategoryBuilder(C.Gender_2, 0, "z", "Sex", null, -3, 5, false, false, false, false, null).male$0();
       case "z":
-        return new V.SexGeekCodeCategoryBuilder(C.Gender_2, 0, "z", null, -3, 5, false, false, false, false, null);
+        return new V.SexGeekCodeCategoryBuilder(C.Gender_2, 0, "z", "Sex", null, -3, 5, false, false, false, false, null);
       default:
         throw H.wrapException(Z.GeekCodeError$("Unknown Geek Code category code: [" + H.S(categoryCode) + "]!"));
     }
   },
-  DressGeekCodeCategoryBuilder: {
-    "^": "GeekCodeCategoryBuilder;_crossDresser,_sameClothes,_code,_wannabe,minGrade,maxGrade,_notRigid,_living,_noKnowledge,_refuse,_crossover",
+  AgeGeekCodeCategoryBuilder: {
+    "^": "GeekCodeCategoryBuilder;_age,code,fullName,_wannabe,minGrade,maxGrade,_notRigid,_living,_noKnowledge,_refuse,_crossover",
     subValidate$3: function(grade, refuse, noKnowledge) {
-      var t1 = new V.DressGeekCodeCategory(this, this, this._code, this, grade);
+      return new V.AgeGeekCodeCategory(this, this, this.code, this, grade);
+    }
+  },
+  AgeGeekCodeCategory: {
+    "^": "GeekCodeCategory;_v312$_builder,GeekCodeCategory__builder,code,_builder,_grade",
+    toString$0: function(_) {
+      var t1, t2;
+      t1 = this.super$GeekCodeCategory$toString$0(this);
+      t2 = this._v312$_builder._age;
+      return t1 + H.S(t2 != null ? t2 : "");
+    }
+  },
+  DressGeekCodeCategoryBuilder: {
+    "^": "GeekCodeCategoryBuilder;_crossDresser,_sameClothes,code,fullName,_wannabe,minGrade,maxGrade,_notRigid,_living,_noKnowledge,_refuse,_crossover",
+    subValidate$3: function(grade, refuse, noKnowledge) {
+      var t1 = new V.DressGeekCodeCategory(this, this, this.code, this, grade);
       if (this._crossDresser)
         t1.code = J.$add$ns(t1.code, "x");
       if (this._sameClothes)
@@ -8346,18 +8585,44 @@ var dart = [
   DressGeekCodeCategory: {
     "^": "GeekCodeCategory;_v312$_builder,GeekCodeCategory__builder,code,_builder,_grade"
   },
+  RelationshipsGeekCodeCategoryBuilder: {
+    "^": "ExtremeGenericGeekCodeCategoryBuilder;_dumped,_extreme,code,fullName,_wannabe,minGrade,maxGrade,_notRigid,_living,_noKnowledge,_refuse,_crossover",
+    subValidate$3: function(grade, refuse, noKnowledge) {
+      return new V.RelationshipsGeekCodeCategory(this, this, this._extreme, this, this.code, this, grade);
+    }
+  },
+  RelationshipsGeekCodeCategory: {
+    "^": "ExtremeGeekCodeCategory;_v312$_builder,ExtremeGeekCodeCategory__builder,_extreme,GeekCodeCategory__builder,code,_builder,_grade",
+    toString$0: function(_) {
+      var t1 = this.super$ExtremeGeekCodeCategory$toString$0(this);
+      return t1 + (this._v312$_builder._dumped ? "%" : "");
+    }
+  },
   SexGeekCodeCategoryBuilder: {
-    "^": "ExtremeGenericGeekCodeCategoryBuilder;_gender,_extreme,_code,_wannabe,minGrade,maxGrade,_notRigid,_living,_noKnowledge,_refuse,_crossover",
+    "^": "ExtremeGenericGeekCodeCategoryBuilder;_gender,_extreme,code,fullName,_wannabe,minGrade,maxGrade,_notRigid,_living,_noKnowledge,_refuse,_crossover",
+    male$0: function() {
+      if (this._gender !== C.Gender_2)
+        throw H.wrapException(Z.GeekCodeError$("Gender already set!"));
+      this._gender = C.Gender_1;
+      return this;
+    },
+    female$0: function() {
+      if (this._gender !== C.Gender_2)
+        throw H.wrapException(Z.GeekCodeError$("Gender already set!"));
+      this._gender = C.Gender_0;
+      return this;
+    },
     subValidate$3: function(grade, refuse, noKnowledge) {
       var t1, t2;
-      t1 = new V.SexGeekCodeCategory(this, this, this._extreme, this, this._code, this, grade);
-      t2 = C.Map_sgWv6.$index(0, this._gender.index);
-      t2.toString;
-      t2 = t2.toLowerCase().split(".");
-      if (1 >= t2.length)
-        return H.ioore(t2, 1);
-      t1.code = t2[1];
-      return t1;
+      t1 = this._gender;
+      t2 = new V.SexGeekCodeCategory(this, this, this._extreme, this, this.code, this, grade);
+      t1 = C.Map_sgWv6.$index(0, t1.index);
+      t1.toString;
+      t1 = t1.toLowerCase().split(".");
+      if (1 >= t1.length)
+        return H.ioore(t1, 1);
+      t2.code = t1[1];
+      return t2;
     }
   },
   Gender: {
@@ -8370,7 +8635,7 @@ var dart = [
     "^": "ExtremeGeekCodeCategory;_v312$_builder,ExtremeGeekCodeCategory__builder,_extreme,GeekCodeCategory__builder,code,_builder,_grade"
   },
   ShapeGeekCodeCategoryBuilder: {
-    "^": "GeekCodeCategoryBuilder;_roundness,_code,_wannabe,minGrade,maxGrade,_notRigid,_living,_noKnowledge,_refuse,_crossover",
+    "^": "GeekCodeCategoryBuilder;_roundness,code,fullName,_wannabe,minGrade,maxGrade,_notRigid,_living,_noKnowledge,_refuse,_crossover",
     subValidate$3: function(grade, refuse, noKnowledge) {
       var t1;
       if (!refuse && !noKnowledge) {
@@ -8382,7 +8647,7 @@ var dart = [
         if (J.$lt$n(t1._grade.grade, this.minGrade) || J.$gt$n(this._roundness._grade.grade, this.maxGrade))
           throw H.wrapException(P.ArgumentError$("roundness[" + H.S(grade.grade) + "] must fall within bounds: minGrade[" + this.minGrade + "], maxGrade[" + this.maxGrade + "!"));
       }
-      return new V.ShapeGeekCodeCategory(this, this._roundness, this, this._code, this, grade);
+      return new V.ShapeGeekCodeCategory(this, this._roundness, this, this.code, this, grade);
     }
   },
   ShapeGeekCodeCategory: {
@@ -8395,7 +8660,7 @@ var dart = [
     }
   },
   UnixGeekCodeCategoryBuilder: {
-    "^": "GeekCodeCategoryBuilder;_type,_code,_wannabe,minGrade,maxGrade,_notRigid,_living,_noKnowledge,_refuse,_crossover",
+    "^": "GeekCodeCategoryBuilder;_type,code,fullName,_wannabe,minGrade,maxGrade,_notRigid,_living,_noKnowledge,_refuse,_crossover",
     type$1: [function(_, type) {
       this._type = type;
       return this;
@@ -8404,7 +8669,7 @@ var dart = [
       var t1, t2;
       this.get$type(this);
       t1 = this._type;
-      t2 = new V.UnixGeekCodeCategory(this, null, this, this._code, this, grade);
+      t2 = new V.UnixGeekCodeCategory(this, null, this, this.code, this, grade);
       if (t1 !== C.UnixType_12)
         if (t1 === C.UnixType_11)
           t2.code = "U*";
@@ -8424,7 +8689,7 @@ var dart = [
     }
   },
   UnixGeekCodeCategory: {
-    "^": "GeekCodeCategory;_v312$_builder,type,GeekCodeCategory__builder,code,_builder,_grade"
+    "^": "GeekCodeCategory;_v312$_builder,type',GeekCodeCategory__builder,code,_builder,_grade"
   },
   GeekCodeV312: {
     "^": "GeekCode;_types,_categories"
@@ -8476,6 +8741,11 @@ var dart = [
   },
   CssClassSetImpl: {
     "^": "Object;",
+    _validateToken$1: function(value) {
+      if ($.get$CssClassSetImpl__validTokenRE()._nativeRegExp.test(H.checkString(value)))
+        return value;
+      throw H.wrapException(P.ArgumentError$value(value, "value", "Not a valid class token"));
+    },
     toString$0: function(_) {
       return this.readClasses$0().join$1(0, " ");
     },
@@ -8496,14 +8766,22 @@ var dart = [
     get$length: function(_) {
       return this.readClasses$0()._collection$_length;
     },
+    contains$1: function(_, value) {
+      if (typeof value !== "string")
+        return false;
+      this._validateToken$1(value);
+      return this.readClasses$0().contains$1(0, value);
+    },
     lookup$1: function(value) {
-      return this.readClasses$0().contains$1(0, value) ? value : null;
+      return this.contains$1(0, value) ? value : null;
     },
     add$1: function(_, value) {
+      this._validateToken$1(value);
       return this.modify$1(new P.CssClassSetImpl_add_closure(value));
     },
     remove$1: function(_, value) {
       var s, result;
+      this._validateToken$1(value);
       s = this.readClasses$0();
       result = s.remove$1(0, value);
       this.writeClasses$1(s);
@@ -8542,6 +8820,22 @@ var dart = [
     add$1: function(_, value) {
       this._childNodes._this.appendChild(value);
     },
+    insert$2: function(_, index, value) {
+      var t1, t2, t3;
+      t1 = this._childNodes;
+      if (index > t1._this.childNodes.length)
+        H.throwExpression(P.RangeError$range(index, 0, t1.get$length(t1), null, null));
+      t1 = t1._this;
+      t2 = t1.childNodes;
+      t3 = t2.length;
+      if (index === t3)
+        t1.appendChild(value);
+      else {
+        if (index >= t3)
+          return H.ioore(t2, index);
+        t1.insertBefore(value, t2[index]);
+      }
+    },
     get$length: function(_) {
       return this.get$_filtered().length;
     },
@@ -8566,73 +8860,19 @@ var dart = [
 ["", "main.dart", , F, {
   "^": "",
   main: [function() {
-    var t1, heading, toggle, t2, t3, t4, t5, t6;
-    t1 = window.innerWidth;
-    if (typeof t1 !== "number")
-      return t1.$gt();
-    if (t1 > 768)
-      J.get$classes$x(document.querySelector("#wrapper")).add$1(0, "showMenu");
-    t1 = C.EventStreamProvider_resize.forTarget$1(window);
-    H.setRuntimeTypeInfo(new W._EventStreamSubscription(0, t1._target, t1._eventType, W._wrapZone(new F.main_closure()), t1._useCapture), [H.getTypeArgumentByIndex(t1, 0)])._tryResume$0();
-    C.EventStreamProvider_change._forElementList$1(new W._FrozenElementList(document.querySelectorAll("input[type=checkbox]"))).listen$1(new F.main_closure0());
-    C.EventStreamProvider_change._forElementList$1(new W._FrozenElementList(document.querySelectorAll("input[type=radio]"))).listen$1(new F.main_closure1());
-    C.EventStreamProvider_click._forElementList$1(new W._FrozenElementList(document.querySelectorAll("button.addCategory"))).listen$1(new F.main_closure2());
-    C.EventStreamProvider_click._forElementList$1(new W._FrozenElementList(document.querySelectorAll("button.removeCategory"))).listen$1(new F.main_closure3());
-    C.EventStreamProvider_click._forElementList$1(new W._FrozenElementList(document.querySelectorAll("button.removeModifiers"))).listen$1(new F.main_closure4());
-    C.EventStreamProvider_change._forElementList$1(new W._FrozenElementList(document.querySelectorAll("select.grade"))).listen$1(new F.main_closure5());
-    for (t1 = $.get$headings(), t1 = t1.get$values(t1), t1 = H.setRuntimeTypeInfo(new H.MappedIterator(null, J.get$iterator$ax(t1._iterable), t1._f), [H.getTypeArgumentByIndex(t1, 0), H.getTypeArgumentByIndex(t1, 1)]); t1.moveNext$0();) {
-      heading = t1._current;
-      toggle = document.createElement("button", null);
-      t2 = J.getInterceptor$x(heading);
-      t3 = t2.get$text(heading);
-      t3.toString;
-      toggle.textContent = "Show " + t3.toLowerCase();
-      toggle.className = "sidebarButton";
-      t3 = J.get$onClick$x(toggle);
-      t4 = t3._eventType;
-      t5 = t3._useCapture;
-      t6 = new W._EventStreamSubscription(0, t3._target, t4, W._wrapZone(new F.main_closure6(heading)), t5);
-      t6.$builtinTypeInfo = [H.getTypeArgumentByIndex(t3, 0)];
-      t3 = t6._onData;
-      if (t3 != null && t6._pauseCount <= 0)
-        J.addEventListener$3$x(t6._target, t4, t3, t5);
-      t2 = t2.get$onClick(heading);
-      t3 = t2._eventType;
-      t4 = t2._useCapture;
-      t5 = new W._EventStreamSubscription(0, t2._target, t3, W._wrapZone(new F.main_closure7(heading, toggle)), t4);
-      t5.$builtinTypeInfo = [H.getTypeArgumentByIndex(t2, 0)];
-      t2 = t5._onData;
-      if (t2 != null && t5._pauseCount <= 0)
-        J.addEventListener$3$x(t5._target, t3, t2, t4);
-      J.get$children$x($.get$toggleButtons()).add$1(0, toggle);
-    }
-    t1 = J.get$onMouseDown$x($.get$output());
-    H.setRuntimeTypeInfo(new W._EventStreamSubscription(0, t1._target, t1._eventType, W._wrapZone(new F.main_closure8()), t1._useCapture), [H.getTypeArgumentByIndex(t1, 0)])._tryResume$0();
-    t1 = $.get$output();
-    t1.toString;
-    t1 = C.EventStreamProvider_copy.forElement$1(t1);
-    H.setRuntimeTypeInfo(new W._EventStreamSubscription(0, t1._target, t1._eventType, W._wrapZone(new F.main_closure9()), t1._useCapture), [H.getTypeArgumentByIndex(t1, 0)])._tryResume$0();
-    t1 = J.get$onClick$x($.get$clearButton());
-    H.setRuntimeTypeInfo(new W._EventStreamSubscription(0, t1._target, t1._eventType, W._wrapZone(new F.main_closure10()), t1._useCapture), [H.getTypeArgumentByIndex(t1, 0)])._tryResume$0();
-    t1 = J.get$onClick$x($.get$toggleMenuButton());
-    H.setRuntimeTypeInfo(new W._EventStreamSubscription(0, t1._target, t1._eventType, W._wrapZone(new F.main_closure11()), t1._useCapture), [H.getTypeArgumentByIndex(t1, 0)])._tryResume$0();
-    F.showNotification("Loaded!", 3);
-    t1 = $.get$loading();
-    J.set$opacity$x(t1.style, "0");
-    t1.toString;
-    t1 = C._CustomEventStreamProvider__determineTransitionEventType.forElement$1(t1);
-    t1.get$first(t1).then$1(new F.main_closure12());
+    K.buildUI();
     F.generate();
   }, "call$0", "main$closure", 0, 0, 1],
   generate: function() {
-    var types, categories, category, e, t1, t2, t3, t4, exception;
+    var types, categories, category, error, stackTrace, t1, t2, t3, t4, exception;
     try {
-      J.set$color$x($.get$output().style, "initial");
+      t1 = $.get$output().style;
+      t1.color = "initial";
       types = F.getTypes();
       categories = F.getCategories();
       $.code = new V.GeekCodeV312(Z.GeekCode__determineTypeList(types), P.LinkedHashMap_LinkedHashMap(null, null, null, P.String, Z.GeekCodeCategory));
       for (t1 = categories, t1 = new J.ArrayIterator(t1, J.get$length$asx(t1), 0, null); t1.moveNext$0();) {
-        category = t1.__interceptors$_current;
+        category = t1._current;
         t2 = category;
         t3 = $.code._categories;
         new H.LinkedHashMapKeyIterable(t3).$builtinTypeInfo = [H.getTypeArgumentByIndex(t3, 0)];
@@ -8646,14 +8886,18 @@ var dart = [
       t1.textContent = t2.super$GeekCode$generate$1("3.12");
     } catch (exception) {
       t1 = H.unwrapException(exception);
-      e = t1;
-      J.set$color$x($.get$output().style, "red");
-      $.get$output().textContent = C.JSString_methods.$add("Error:\n", J.toString$0(e));
+      error = t1;
+      stackTrace = H.getTraceFromException(exception);
+      P.print(H.S(error) + "\n" + H.S(stackTrace));
+      t1 = $.get$output();
+      t2 = t1.style;
+      t2.color = "red";
+      t1.textContent = "Error:\n" + J.toString$0($.get$e());
     }
   },
   getTypes: function() {
     var t1, selectedTypeStrings;
-    t1 = J.get$children$x($.get$forms().$index(0, "types"));
+    t1 = J.get$children$x(document.querySelector("form#typesForm"));
     t1 = t1.where$1(t1, new F.getTypes_closure());
     t1 = H.MappedIterable_MappedIterable(t1, new F.getTypes_closure0(), H.getRuntimeTypeArgument(t1, "IterableBase", 0), null);
     selectedTypeStrings = P.List_List$from(t1, true, H.getRuntimeTypeArgument(t1, "IterableBase", 0));
@@ -8667,232 +8911,78 @@ var dart = [
     t1 = H.MappedIterable_MappedIterable(t1, new F.getCategories_closure0(), H.getRuntimeTypeArgument(t1, "IterableBase", 0), null);
     return P.List_List$from(t1, true, H.getRuntimeTypeArgument(t1, "IterableBase", 0));
   },
-  clear: function() {
-    var t1, t2;
-    if ($.get$output().textContent.length > 0) {
-      for (t1 = J.get$children$x($.get$forms().$index(0, "types")), t1 = t1.where$1(t1, new F.clear_closure()), t1 = H.setRuntimeTypeInfo(new H.WhereIterator(J.get$iterator$ax(t1._iterable), t1._f), [H.getTypeArgumentByIndex(t1, 0)]), t2 = t1._iterator; t1.moveNext$0();)
-        J.click$0$x(t2.get$current());
-      for (t1 = new W._FrozenElementList(document.querySelectorAll("button.removeCategory")), t1 = t1.get$iterator(t1); t1.moveNext$0();)
-        J.click$0$x(t1._current);
-      F.showNotification("Cleared", 3);
-    }
-  },
-  showNotification: function(text, duration) {
-    var t1 = $.notificationTimer;
-    if (t1 != null)
-      t1.cancel$0();
-    t1 = $.get$notification();
-    t1.textContent = text;
-    t1 = t1.style;
-    J.getInterceptor$x(t1).set$backgroundColor(t1, "lightGray");
-    C.CssStyleDeclaration_methods.set$maxHeight(t1, "1000px");
-    C.CssStyleDeclaration_methods.set$height(t1, "auto");
-    C.CssStyleDeclaration_methods.set$paddingTop(t1, "5px");
-    C.CssStyleDeclaration_methods.set$paddingBottom(t1, "5px");
-    $.notificationTimer = P.Timer_Timer(P.Duration$(0, 0, 0, 0, 0, duration), new F.showNotification_closure());
-  },
-  main_closure: {
-    "^": "Closure:2;",
-    call$1: function(_) {
-      var t1 = window.innerWidth;
-      if (typeof t1 !== "number")
-        return t1.$gt();
-      if (t1 > 768)
-        J.get$classes$x(document.querySelector("#wrapper")).add$1(0, "showMenu");
-      else
-        J.get$classes$x(document.querySelector("#wrapper")).remove$1(0, "showMenu");
-    }
-  },
-  main_closure0: {
-    "^": "Closure:2;",
-    call$1: function(_) {
-      return F.generate();
-    }
-  },
-  main_closure1: {
-    "^": "Closure:16;",
-    call$1: function(e) {
-      var radio, t1, dropdown, secondary;
-      radio = H.interceptedTypeCast(J.get$target$x(e), "$isInputElement");
-      t1 = C.JSString_methods.$add("select.grade[name=", radio.name) + "]";
-      dropdown = H.interceptedTypeCast(document.querySelector(t1), "$isSelectElement");
-      t1 = C.JSString_methods.$add("select.grade.secondary[name=", radio.name) + "]";
-      secondary = H.interceptedTypeCast(document.querySelector(t1), "$isSelectElement");
-      t1 = radio.value;
-      if (t1 === "noKnowledge" || t1 === "refuse") {
-        dropdown.disabled = true;
-        if (secondary != null)
-          secondary.disabled = true;
-      } else {
-        dropdown.disabled = false;
-        if (secondary != null)
-          secondary.disabled = false;
-      }
-      t1 = C.JSString_methods.$add("button.removeModifiers[name=", radio.name) + "]";
-      J.set$display$x(document.querySelector(t1).style, "inline-block");
-      F.generate();
-    }
-  },
-  main_closure2: {
-    "^": "Closure:16;",
-    call$1: function(e) {
-      var target, category, t1;
-      J.preventDefault$0$x(e);
-      target = H.interceptedTypeCast(W._convertNativeToDart_EventTarget(e.target), "$isElement");
-      category = target.getAttribute("name");
-      J.set$display$x(target.style, "none");
-      t1 = C.JSString_methods.$add("div.gradeContainer[name=", category) + "]";
-      J.set$display$x(document.querySelector(t1).style, "inline-table");
-      F.generate();
-    }
-  },
-  main_closure3: {
-    "^": "Closure:16;",
-    call$1: function(e) {
-      var category, t1;
-      J.preventDefault$0$x(e);
-      category = H.interceptedTypeCast(W._convertNativeToDart_EventTarget(e.target), "$isElement").getAttribute("name");
-      t1 = C.JSString_methods.$add("div.gradeContainer[name=", category) + "]";
-      J.set$display$x(document.querySelector(t1).style, "none");
-      t1 = C.JSString_methods.$add("button.addCategory[name=", category) + "]";
-      J.set$display$x(document.querySelector(t1).style, "inline-block");
-      F.generate();
-    }
-  },
-  main_closure4: {
-    "^": "Closure:16;",
-    call$1: function(e) {
-      var target, t1, secondary;
-      J.preventDefault$0$x(e);
-      target = H.interceptedTypeCast(W._convertNativeToDart_EventTarget(e.target), "$isButtonElement");
-      J.set$display$x(target.style, "none");
-      t1 = C.JSString_methods.$add("input[type=radio][name=", target.name) + "]:checked";
-      H.interceptedTypeCast(document.querySelector(t1), "$isInputElement").checked = false;
-      t1 = C.JSString_methods.$add("select.grade[name=", target.name) + "]";
-      H.interceptedTypeCast(document.querySelector(t1), "$isSelectElement").disabled = false;
-      t1 = C.JSString_methods.$add("select.grade.secondary[name=", target.name) + "]";
-      secondary = H.interceptedTypeCast(document.querySelector(t1), "$isSelectElement");
-      if (secondary != null)
-        secondary.disabled = false;
-      F.generate();
-    }
-  },
-  main_closure5: {
-    "^": "Closure:2;",
-    call$1: function(_) {
-      return F.generate();
-    }
-  },
-  main_closure6: {
-    "^": "Closure:2;_captured_heading_0",
-    call$1: function(_) {
-      return J.click$0$x(this._captured_heading_0);
-    }
-  },
-  main_closure7: {
-    "^": "Closure:16;_captured_heading_1,_captured_toggle_2",
-    call$1: function(e) {
-      var next, t1, t2, t3;
-      next = H.interceptedTypeCast(J.get$target$x(e), "$isElement").nextElementSibling;
-      t1 = J.get$maxHeight$x(next.style) === "0px" || J.get$maxHeight$x(next.style) === "";
-      t2 = this._captured_toggle_2;
-      t3 = this._captured_heading_1;
-      if (t1) {
-        t1 = J.get$text$x(t3);
-        t1.toString;
-        t2.textContent = "Hide " + t1.toLowerCase();
-        t1 = next.style;
-        J.getInterceptor$x(t1).set$maxHeight(t1, "1000px");
-        C.CssStyleDeclaration_methods.set$height(t1, "auto");
-        C.CssStyleDeclaration_methods.set$paddingTop(t1, "5px");
-        C.CssStyleDeclaration_methods.set$paddingBottom(t1, "5px");
-      } else {
-        t1 = J.get$text$x(t3);
-        t1.toString;
-        t2.textContent = "Show " + t1.toLowerCase();
-        t1 = next.style;
-        J.getInterceptor$x(t1).set$paddingTop(t1, "0px");
-        C.CssStyleDeclaration_methods.set$paddingBottom(t1, "0px");
-        C.CssStyleDeclaration_methods.set$maxHeight(t1, "0");
-      }
-    }
-  },
-  main_closure8: {
-    "^": "Closure:17;",
-    call$1: function(e) {
-      J.preventDefault$0$x(e);
-      J.select$0$x($.get$output());
-    }
-  },
-  main_closure9: {
-    "^": "Closure:2;",
-    call$1: function(_) {
-      if ($.get$output().textContent.length > 0)
-        F.showNotification("Copied to clipboard", 3);
-      else
-        F.showNotification("Nothing to copy!", 3);
-    }
-  },
-  main_closure10: {
-    "^": "Closure:2;",
-    call$1: function(_) {
-      return F.clear();
-    }
-  },
-  main_closure11: {
-    "^": "Closure:2;",
-    call$1: function(_) {
-      var wrapper, t1;
-      wrapper = document.querySelector("#wrapper");
-      t1 = J.getInterceptor$x(wrapper);
-      if (t1.get$classes(wrapper).readClasses$0().contains$1(0, "showMenu"))
-        t1.get$classes(wrapper).remove$1(0, "showMenu");
-      else
-        t1.get$classes(wrapper).add$1(0, "showMenu");
-    }
-  },
-  main_closure12: {
-    "^": "Closure:2;",
-    call$1: function(_) {
-      return J.remove$0$ax($.get$loading());
-    }
-  },
   getTypes_closure: {
-    "^": "Closure:18;",
+    "^": "Closure:16;",
     call$1: function(e) {
       return !!J.getInterceptor(e).$isInputElement && e.type === "checkbox" && e.checked === true;
     }
   },
   getTypes_closure0: {
-    "^": "Closure:19;",
+    "^": "Closure:17;",
     call$1: function(e) {
       return J.get$value$x(e);
     }
   },
   getTypes_closure1: {
-    "^": "Closure:20;_captured_selectedTypeStrings_0",
+    "^": "Closure:18;_captured_selectedTypeStrings_0",
     call$1: function(type) {
       return C.JSArray_methods.contains$1(this._captured_selectedTypeStrings_0, J.toString$0(type));
     }
   },
   getCategories_closure: {
-    "^": "Closure:21;",
+    "^": "Closure:19;",
     call$1: function(e) {
       var t1 = J.getInterceptor$x(e);
-      return J.get$display$x(J.get$style$x(t1.get$parent(e))) !== "none" && J.get$display$x(J.get$style$x(t1.get$parent(e))) !== "" && !t1.get$classes(e).readClasses$0().contains$1(0, "secondary");
+      return J.get$opacity$x(J.get$style$x(J.get$parent$x(t1.get$parent(e)))) === "1" && J.get$opacity$x(J.get$style$x(J.get$parent$x(t1.get$parent(e)))) !== "" && !t1.get$classes(e).contains$1(0, "secondary");
     }
   },
   getCategories_closure0: {
-    "^": "Closure:21;",
+    "^": "Closure:19;",
     call$1: function(e) {
-      var t1, builder, t2, selectedModifier, roundnessGrade, modifier;
+      var t1, builder, t2, selectedModifier, extremeInput, roundnessGrade, ageInput, age, t3, genderSelect, modifier;
       t1 = J.getInterceptor$x(e);
       builder = V.getBuilder(t1.get$name(e));
-      t2 = C.JSString_methods.$add("input[type=radio][name=", t1.get$name(e)) + "]:checked";
+      t2 = "input[type=radio][name='" + H.S(t1.get$name(e)) + "']:checked";
       selectedModifier = H.interceptedTypeCast(document.querySelector(t2), "$isInputElement");
+      t2 = "input[type=radio][id='" + H.S(t1.get$name(e)) + "Extreme']";
+      extremeInput = document.querySelector(t2);
       if (t1.get$name(e) === "s") {
         roundnessGrade = H.Primitives_parseInt(H.interceptedTypeCast(document.querySelector("select#shapeRoundness"), "$isSelectElement").value, null, null);
         H.interceptedTypeCast(builder, "$isShapeGeekCodeCategoryBuilder")._roundness = new Z.BasicGeekCodeCategory(new Z.BasicGeekCodeCategoryBuilder(false, false, false, false, null), new Z.GeekCodeGrade(roundnessGrade));
+      }
+      if (t1.get$name(e) === "a") {
+        ageInput = H.interceptedTypeCast(document.querySelector("input#customAge"), "$isInputElement");
+        t2 = ageInput.style;
+        if ((t2 && C.CssStyleDeclaration_methods).get$opacity(t2) === "1") {
+          t1 = ageInput.value;
+          if (t1.length > 0) {
+            age = H.Primitives_parseInt(t1, null, null);
+            H.interceptedTypeCast(builder, "$isAgeGeekCodeCategoryBuilder");
+            builder._age = age;
+            return new V.AgeGeekCodeCategory(builder, builder, builder.code, builder, null);
+          } else
+            return builder.grade$1(new Z.GeekCodeGrade(0));
+        }
+      }
+      if (t1.get$name(e) === "U") {
+        t2 = t1.get$name(e);
+        t3 = H.interceptedTypeCast(document.querySelector("select#unixOS"), "$isSelectElement").value;
+        if (t2 == null)
+          return t2.$add();
+        builder = V.getBuilder(J.$add$ns(t2, t3));
+      }
+      if (t1.get$name(e) === "z") {
+        genderSelect = document.querySelector("select#genders");
+        t2 = J.getInterceptor$x(genderSelect);
+        if (t2.get$value(genderSelect) === "x")
+          H.interceptedTypeCast(builder, "$isSexGeekCodeCategoryBuilder").female$0();
+        if (t2.get$value(genderSelect) === "y")
+          H.interceptedTypeCast(builder, "$isSexGeekCodeCategoryBuilder").male$0();
+      }
+      if (extremeInput != null && J.get$checked$x(extremeInput) === true) {
+        H.interceptedTypeCast(builder, "$isExtremeGenericGeekCodeCategoryBuilder");
+        builder._extreme = H.Primitives_parseInt(J.get$value$x(extremeInput), null, null);
+        return builder.subValidate$3(null, false, false);
       }
       if (selectedModifier != null) {
         modifier = selectedModifier.value;
@@ -8919,30 +9009,865 @@ var dart = [
                     break;
                 }
                 break;
+              case "r":
+                if (modifier === "dumped")
+                  H.interceptedTypeCast(builder, "$isRelationshipsGeekCodeCategoryBuilder")._dumped = true;
+                break;
             }
         }
       }
       return builder.grade$1(new Z.GeekCodeGrade(H.Primitives_parseInt(t1.get$value(e), null, null)));
     }
+  }
+},
+1],
+["", "ui.dart", , K, {
+  "^": "",
+  buildUI: function() {
+    var t1, t2;
+    t1 = window.innerWidth;
+    if (typeof t1 !== "number")
+      return t1.$gt();
+    if (t1 > 768)
+      J.get$classes$x(document.querySelector("#wrapper")).add$1(0, "showMenu");
+    K.buildTypes();
+    K.buildSections();
+    K.buildCategories();
+    K.addListeners();
+    K.showNotification("Loaded!", 3);
+    t1 = $.get$loading();
+    t2 = t1.style;
+    (t2 && C.CssStyleDeclaration_methods).set$opacity(t2, "0");
+    t1.toString;
+    t1 = C._CustomEventStreamProvider__determineTransitionEventType.forElement$1(t1);
+    t1.get$first(t1).then$1(new K.buildUI_closure());
   },
-  clear_closure: {
-    "^": "Closure:18;",
+  buildTypes: function() {
+    var typesForm, typesContainer, t1, t2, t3, type, t4, t5, t6;
+    typesForm = document.createElement("form", null);
+    typesForm.id = "typesForm";
+    typesForm.className = "slides";
+    typesContainer = document.querySelector("section#types");
+    t1 = J.getInterceptor$x(typesContainer);
+    t2 = t1.get$children(typesContainer);
+    t3 = document.createElement("h2", null);
+    t3.textContent = "Types";
+    t3.className = "collapse";
+    t2.add$1(0, t3);
+    t1.get$children(typesContainer).add$1(0, typesForm);
+    for (t1 = new J.ArrayIterator($.get$allTypes(), 28, 0, null), t2 = J.getInterceptor$x(typesForm); t1.moveNext$0();) {
+      type = t1._current;
+      t3 = t2.get$children(typesForm);
+      t4 = W.InputElement_InputElement("checkbox");
+      t5 = J.getInterceptor(type);
+      t4.id = t5.toString$0(type);
+      t4.className = "type";
+      t6 = J.getInterceptor$x(t4);
+      t6.set$name(t4, t5.toString$0(type));
+      t6.set$value(t4, t5.toString$0(type));
+      t3.add$1(0, t4);
+      t4 = document.createElement("label", null);
+      J.set$htmlFor$x(t4, t5.toString$0(type));
+      t4.textContent = H.S(t5.toString$0(type)) + ": " + type.get$description();
+      t3.add$1(0, t4);
+      t3.add$1(0, document.createElement("br", null));
+    }
+  },
+  buildSections: function() {
+    var sectionContainer, t1, t2, section, t3, t4;
+    sectionContainer = document.querySelector("section#sections");
+    for (t1 = $.get$sections().get$keys()._map, t2 = new H.LinkedHashMapKeyIterator(t1, t1._modifications, null, null), t2._cell = t1._first, t1 = J.getInterceptor$x(sectionContainer); t2.moveNext$0();) {
+      section = t2.__js_helper$_current;
+      t3 = t1.get$children(sectionContainer);
+      t4 = document.createElement("h2", null);
+      t4.className = "collapse section";
+      t4.id = J.toLowerCase$0$s(section);
+      t4.textContent = section;
+      t3.add$1(0, t4);
+      t4 = document.createElement("form", null);
+      t4.className = "slides categoryForm";
+      t4.id = section.toLowerCase() + "Form";
+      t3.add$1(0, t4);
+    }
+  },
+  buildCategories: function() {
+    var t1, t2, section, form, t3, builder, gradeSelect, t4, i, t5, t6, grade, j, t7, t8, codeSpan, modifiersContainer, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, t19, OSes, genders;
+    for (t1 = $.get$sections().get$keys()._map, t2 = new H.LinkedHashMapKeyIterator(t1, t1._modifications, null, null), t2._cell = t1._first; t2.moveNext$0();) {
+      section = t2.__js_helper$_current;
+      t1 = "form#" + J.toLowerCase$0$s(section) + "Form";
+      form = document.querySelector(t1);
+      for (t1 = $.get$sections().$index(0, section), t1 = new J.ArrayIterator(t1, t1.length, 0, null), t3 = J.getInterceptor$x(form); t1.moveNext$0();) {
+        builder = t1._current;
+        gradeSelect = document.createElement("select", null);
+        gradeSelect.className = "grade";
+        gradeSelect.toString;
+        t4 = J.getInterceptor$x(builder);
+        gradeSelect.setAttribute("name", t4.get$code(builder));
+        for (i = builder.get$maxGrade(), t5 = builder.minGrade, t6 = J.getInterceptor$x(gradeSelect); i >= t5; --i) {
+          if (i > 0)
+            for (grade = "", j = 1; j <= i; ++j)
+              grade += "+";
+          else if (i < 0)
+            for (grade = "", j = -1; j >= i; --j)
+              grade += "-";
+          else
+            grade = "";
+          t7 = t6.get$children(gradeSelect);
+          t8 = W.OptionElement_OptionElement$_("", "" + i, null, i === 0);
+          t8.textContent = grade;
+          t7.add$1(0, t8);
+        }
+        codeSpan = document.createElement("span", null);
+        t5 = builder.code;
+        codeSpan.textContent = t5;
+        codeSpan.className = "code";
+        modifiersContainer = document.createElement("div", null);
+        t7 = t3.get$children(form);
+        t8 = document.createElement("div", null);
+        t8.className = "category";
+        t9 = J.getInterceptor$x(t8);
+        t10 = t9.get$children(t8);
+        t11 = document.createElement("h3", null);
+        t11.textContent = builder.fullName;
+        t10.add$1(0, t11);
+        t9.get$children(t8).add$1(0, codeSpan);
+        t11 = t9.get$children(t8);
+        t10 = document.createElement("button", null);
+        t10.className = "addCategory";
+        t10.setAttribute("name", t5);
+        t10.textContent = "Add category";
+        t11.add$1(0, t10);
+        t9 = t9.get$children(t8);
+        t10 = document.createElement("div", null);
+        t10.className = "gradeContainer";
+        t10.setAttribute("name", t5);
+        t11 = J.getInterceptor$x(t10);
+        t12 = t11.get$children(t10);
+        t13 = document.createElement("tr", null);
+        t13.className = "gradeRow";
+        t14 = J.getInterceptor$x(t13);
+        t14.get$children(t13).add$1(0, gradeSelect);
+        t15 = t14.get$children(t13);
+        modifiersContainer.className = "modifiersContainer";
+        modifiersContainer.setAttribute("name", t5);
+        t16 = J.getInterceptor$x(modifiersContainer);
+        t17 = t16.get$children(modifiersContainer);
+        t18 = W.InputElement_InputElement("radio");
+        t18.className = "exclusive modifier";
+        t18.id = t5 + "?";
+        t19 = J.getInterceptor$x(t18);
+        t19.set$name(t18, t5);
+        t19.set$value(t18, "noKnowledge");
+        t17.add$1(0, t18);
+        t18 = t16.get$children(modifiersContainer);
+        t17 = document.createElement("label", null);
+        J.set$htmlFor$x(t17, t5 + "?");
+        t17.setAttribute("name", t5);
+        t17.textContent = "?";
+        t18.add$1(0, t17);
+        t17 = t16.get$children(modifiersContainer);
+        t18 = W.InputElement_InputElement("radio");
+        t18.className = "exclusive modifier";
+        t18.id = t5 + "!";
+        t19 = J.getInterceptor$x(t18);
+        t19.set$name(t18, t5);
+        t19.set$value(t18, "refuse");
+        t17.add$1(0, t18);
+        t18 = t16.get$children(modifiersContainer);
+        t17 = document.createElement("label", null);
+        J.set$htmlFor$x(t17, t5 + "!");
+        t17.setAttribute("name", t5);
+        t17.textContent = "!";
+        t18.add$1(0, t17);
+        t15.add$1(0, modifiersContainer);
+        t14 = t14.get$children(t13);
+        t15 = document.createElement("button", null);
+        t15.className = "removeModifiers";
+        J.set$name$x(t15, t5);
+        t15.textContent = "Remove modifiers";
+        t14.add$1(0, t15);
+        t12.add$1(0, t13);
+        t11 = t11.get$children(t10);
+        t13 = document.createElement("tr", null);
+        t13.className = "gradeRow";
+        t12 = J.get$children$x(t13);
+        t15 = document.createElement("button", null);
+        t15.className = "removeCategory";
+        J.set$name$x(t15, t5);
+        t15.textContent = "Remove category";
+        t12.add$1(0, t15);
+        t11.add$1(0, t13);
+        t9.add$1(0, t10);
+        t7.add$1(0, t8);
+        if (!!t4.$isExtremeGenericGeekCodeCategoryBuilder) {
+          t4 = t16.get$children(modifiersContainer);
+          t7 = W.InputElement_InputElement("radio");
+          t8 = J.getInterceptor$x(t7);
+          t8.set$name(t7, t5);
+          t7.className = "exclusive modifier";
+          t7.id = t5 + "Extreme";
+          t8.set$value(t7, "1");
+          t4.add$1(0, t7);
+          t7 = document.createElement("label", null);
+          J.set$htmlFor$x(t7, t5 + "Extreme");
+          t7.textContent = "Extreme";
+          t4.add$1(0, t7);
+        }
+        switch (t5) {
+          case "d":
+            t4 = t16.get$children(modifiersContainer);
+            t5 = W.InputElement_InputElement("radio");
+            t5.className = "exclusive modifier";
+            t5.id = "dx";
+            t6 = J.getInterceptor$x(t5);
+            t6.set$name(t5, "d");
+            t6.set$value(t5, "crossDresser");
+            t4.add$1(0, t5);
+            t5 = document.createElement("label", null);
+            J.set$htmlFor$x(t5, "dx");
+            t5.textContent = "x";
+            t4.add$1(0, t5);
+            t5 = W.InputElement_InputElement("radio");
+            t5.className = "exclusive modifier";
+            t5.id = "dpu";
+            t6 = J.getInterceptor$x(t5);
+            t6.set$name(t5, "d");
+            t6.set$value(t5, "sameClothes");
+            t4.add$1(0, t5);
+            t5 = document.createElement("label", null);
+            J.set$htmlFor$x(t5, "dpu");
+            t5.textContent = "pu";
+            t4.add$1(0, t5);
+            break;
+          case "s":
+            t4 = t16.get$children(modifiersContainer);
+            t5 = document.createElement("select", null);
+            t5.className = "secondary";
+            t6 = J.getInterceptor$x(t5);
+            t6.set$name(t5, "s");
+            t5.id = "shapeRoundness";
+            t7 = t6.get$children(t5);
+            t8 = W.OptionElement_OptionElement$_("", "2", null, false);
+            t8.textContent = "++";
+            t7.add$1(0, t8);
+            t8 = t6.get$children(t5);
+            t7 = W.OptionElement_OptionElement$_("", "1", null, false);
+            t7.textContent = "+";
+            t8.add$1(0, t7);
+            t7 = t6.get$children(t5);
+            t8 = W.OptionElement_OptionElement$_("", "0", null, true);
+            t8.textContent = "";
+            t7.add$1(0, t8);
+            t8 = t6.get$children(t5);
+            t7 = W.OptionElement_OptionElement$_("", "-1", null, false);
+            t7.textContent = "-";
+            t8.add$1(0, t7);
+            t7 = t6.get$children(t5);
+            t8 = W.OptionElement_OptionElement$_("", "-2", null, false);
+            t8.textContent = "--";
+            t7.add$1(0, t8);
+            t6 = t6.get$children(t5);
+            t8 = W.OptionElement_OptionElement$_("", "-3", null, false);
+            t8.textContent = "---";
+            t6.add$1(0, t8);
+            t4.insert$2(0, 0, t5);
+            t5 = document.createElement("span", null);
+            t5.textContent = ":";
+            t5.className = "secondarySeparator";
+            t4.insert$2(0, 0, t5);
+            break;
+          case "a":
+            t4 = t6.get$children(gradeSelect);
+            t5 = W.OptionElement_OptionElement$_("", "customAge", null, false);
+            t5.textContent = "Custom age...";
+            t4.insert$2(0, 0, t5);
+            t16 = t16.get$children(modifiersContainer);
+            t5 = W.InputElement_InputElement("text");
+            t4 = J.getInterceptor$x(t5);
+            t4.set$name(t5, "a");
+            t5.id = "customAge";
+            t4.set$placeholder(t5, "Numeric age");
+            t6 = t4.get$onKeyDown(t5);
+            t7 = t6._eventType;
+            t8 = t6._useCapture;
+            t9 = new W._EventStreamSubscription(0, t6._html$_target, t7, W._wrapZone(new K.buildCategories_closure()), t8);
+            t9.$builtinTypeInfo = [H.getTypeArgumentByIndex(t6, 0)];
+            t6 = t9._onData;
+            if (t6 != null && t9._pauseCount <= 0)
+              J.addEventListener$3$x(t9._html$_target, t7, t6, t8);
+            t6 = C.EventStreamProvider_paste.forElement$1(t5);
+            t7 = t6._eventType;
+            t8 = t6._useCapture;
+            t9 = new W._EventStreamSubscription(0, t6._html$_target, t7, W._wrapZone(new K.buildCategories_closure0()), t8);
+            t9.$builtinTypeInfo = [H.getTypeArgumentByIndex(t6, 0)];
+            t6 = t9._onData;
+            if (t6 != null && t9._pauseCount <= 0)
+              J.addEventListener$3$x(t9._html$_target, t7, t6, t8);
+            t4 = t4.get$onKeyUp(t5);
+            t6 = t4._eventType;
+            t7 = t4._useCapture;
+            t8 = new W._EventStreamSubscription(0, t4._html$_target, t6, W._wrapZone(new K.buildCategories_closure1()), t7);
+            t8.$builtinTypeInfo = [H.getTypeArgumentByIndex(t4, 0)];
+            t4 = t8._onData;
+            if (t4 != null && t8._pauseCount <= 0)
+              J.addEventListener$3$x(t8._html$_target, t6, t4, t7);
+            t16.add$1(0, t5);
+            t4 = document.createElement("button", null);
+            J.set$name$x(t4, "a");
+            t4.className = "showGrade";
+            t4.textContent = "Grade";
+            t16.add$1(0, t4);
+            break;
+          case "U":
+            OSes = document.createElement("select", null);
+            t4 = J.getInterceptor$x(OSes);
+            t4.set$name(OSes, "U");
+            OSes.className = "modifier";
+            OSes.id = "unixOS";
+            t5 = t4.get$children(OSes);
+            t6 = W.OptionElement_OptionElement$_("", "", null, true);
+            t6.textContent = "Select specific OS...";
+            t6.disabled = true;
+            t5.add$1(0, t6);
+            t6 = t4.get$children(OSes);
+            t5 = W.OptionElement_OptionElement$_("", "B", null, false);
+            t5.textContent = "BSD";
+            t6.add$1(0, t5);
+            t5 = t4.get$children(OSes);
+            t6 = W.OptionElement_OptionElement$_("", "L", null, false);
+            t6.textContent = "Linux";
+            t5.add$1(0, t6);
+            t6 = t4.get$children(OSes);
+            t5 = W.OptionElement_OptionElement$_("", "U", null, false);
+            t5.textContent = "Ultrix";
+            t6.add$1(0, t5);
+            t5 = t4.get$children(OSes);
+            t6 = W.OptionElement_OptionElement$_("", "A", null, false);
+            t6.textContent = "AIX";
+            t5.add$1(0, t6);
+            t6 = t4.get$children(OSes);
+            t5 = W.OptionElement_OptionElement$_("", "V", null, false);
+            t5.textContent = "SysV";
+            t6.add$1(0, t5);
+            t5 = t4.get$children(OSes);
+            t6 = W.OptionElement_OptionElement$_("", "H", null, false);
+            t6.textContent = "HPUX";
+            t5.add$1(0, t6);
+            t6 = t4.get$children(OSes);
+            t5 = W.OptionElement_OptionElement$_("", "I", null, false);
+            t5.textContent = "IRIX";
+            t6.add$1(0, t5);
+            t5 = t4.get$children(OSes);
+            t6 = W.OptionElement_OptionElement$_("", "O", null, false);
+            t6.textContent = "OSF/1";
+            t5.add$1(0, t6);
+            t6 = t4.get$children(OSes);
+            t5 = W.OptionElement_OptionElement$_("", "S", null, false);
+            t5.textContent = "Sun OS/Solaris";
+            t6.add$1(0, t5);
+            t5 = t4.get$children(OSes);
+            t6 = W.OptionElement_OptionElement$_("", "C", null, false);
+            t6.textContent = "SCO Unix";
+            t5.add$1(0, t6);
+            t6 = t4.get$children(OSes);
+            t5 = W.OptionElement_OptionElement$_("", "X", null, false);
+            t5.textContent = "NeXT";
+            t6.add$1(0, t5);
+            t5 = t4.get$children(OSes);
+            t6 = W.OptionElement_OptionElement$_("", "*", null, false);
+            t6.textContent = "[Other]";
+            t5.add$1(0, t6);
+            t4 = t4.get$onChange(OSes);
+            t6 = t4._eventType;
+            t5 = t4._useCapture;
+            t7 = new W._EventStreamSubscription(0, t4._html$_target, t6, W._wrapZone(new K.buildCategories_closure2(gradeSelect, codeSpan)), t5);
+            t7.$builtinTypeInfo = [H.getTypeArgumentByIndex(t4, 0)];
+            t4 = t7._onData;
+            if (t4 != null && t7._pauseCount <= 0)
+              J.addEventListener$3$x(t7._html$_target, t6, t4, t5);
+            C.EventStreamProvider_click._forElementList$1(new W._FrozenElementList(document.querySelectorAll("input[type=radio][name='U']"))).listen$1(new K.buildCategories_closure3(codeSpan, OSes));
+            t4 = J.get$onClick$x(document.querySelector("button.removeModifiers[name='U']"));
+            t5 = t4._eventType;
+            t6 = t4._useCapture;
+            t7 = new W._EventStreamSubscription(0, t4._html$_target, t5, W._wrapZone(new K.buildCategories_closure4(codeSpan, OSes)), t6);
+            t7.$builtinTypeInfo = [H.getTypeArgumentByIndex(t4, 0)];
+            t4 = t7._onData;
+            if (t4 != null && t7._pauseCount <= 0)
+              J.addEventListener$3$x(t7._html$_target, t5, t4, t6);
+            t16.get$children(modifiersContainer).add$1(0, OSes);
+            break;
+          case "r":
+            t4 = t16.get$children(modifiersContainer);
+            t5 = W.InputElement_InputElement("radio");
+            t5.className = "exclusive modifier";
+            t5.id = "dumped";
+            t6 = J.getInterceptor$x(t5);
+            t6.set$name(t5, "r");
+            t6.set$value(t5, "dumped");
+            t4.add$1(0, t5);
+            t5 = document.createElement("label", null);
+            J.set$htmlFor$x(t5, "dumped");
+            t5.textContent = "%";
+            t4.add$1(0, t5);
+            break;
+          case "z":
+            genders = document.createElement("select", null);
+            t4 = J.getInterceptor$x(genders);
+            t4.set$name(genders, "z");
+            genders.className = "modifier";
+            genders.id = "genders";
+            t5 = t4.get$children(genders);
+            t6 = W.OptionElement_OptionElement$_("", "", null, true);
+            t6.textContent = "Select gender...";
+            t6.disabled = true;
+            t5.add$1(0, t6);
+            t6 = t4.get$children(genders);
+            t5 = W.OptionElement_OptionElement$_("", "x", null, false);
+            t5.textContent = "Female";
+            t6.add$1(0, t5);
+            t5 = t4.get$children(genders);
+            t6 = W.OptionElement_OptionElement$_("", "y", null, false);
+            t6.textContent = "Male";
+            t5.add$1(0, t6);
+            t4 = t4.get$onChange(genders);
+            t6 = t4._eventType;
+            t5 = t4._useCapture;
+            t7 = new W._EventStreamSubscription(0, t4._html$_target, t6, W._wrapZone(new K.buildCategories_closure5(codeSpan)), t5);
+            t7.$builtinTypeInfo = [H.getTypeArgumentByIndex(t4, 0)];
+            t4 = t7._onData;
+            if (t4 != null && t7._pauseCount <= 0)
+              J.addEventListener$3$x(t7._html$_target, t6, t4, t5);
+            t4 = J.get$onClick$x(document.querySelector("button.removeModifiers[name='z']"));
+            t5 = t4._eventType;
+            t6 = t4._useCapture;
+            t7 = new W._EventStreamSubscription(0, t4._html$_target, t5, W._wrapZone(new K.buildCategories_closure6(codeSpan, genders)), t6);
+            t7.$builtinTypeInfo = [H.getTypeArgumentByIndex(t4, 0)];
+            t4 = t7._onData;
+            if (t4 != null && t7._pauseCount <= 0)
+              J.addEventListener$3$x(t7._html$_target, t5, t4, t6);
+            t16.get$children(modifiersContainer).add$1(0, genders);
+            break;
+        }
+      }
+    }
+  },
+  showNotification: function(text, duration) {
+    var t1 = $.notificationTimer;
+    if (t1 != null)
+      t1.cancel$0();
+    t1 = $.get$notification();
+    t1.textContent = text;
+    t1 = t1.style;
+    t1.backgroundColor = "lightGray";
+    t1.maxHeight = "1000px";
+    t1.height = "auto";
+    t1.paddingTop = "5px";
+    t1.paddingBottom = "5px";
+    $.notificationTimer = P.Timer_Timer(P.Duration$(0, 0, 0, 0, 0, duration), new K.showNotification_closure());
+  },
+  clear: function() {
+    var t1, t2, grade;
+    if ($.get$output().textContent.length > 0) {
+      for (t1 = J.get$children$x(document.querySelector("form#typesForm")), t1 = t1.where$1(t1, new K.clear_closure()), t1 = H.setRuntimeTypeInfo(new H.WhereIterator(J.get$iterator$ax(t1._iterable), t1._f), [H.getTypeArgumentByIndex(t1, 0)]), t2 = t1._iterator; t1.moveNext$0();)
+        J.click$0$x(t2.get$current());
+      for (t1 = new W._FrozenElementList(document.querySelectorAll(".grade,.secondary")), t1 = t1.get$iterator(t1); t1.moveNext$0();) {
+        grade = t1.__internal$_current;
+        t2 = J.getInterceptor$x(grade);
+        t2.set$selectedIndex(grade, J.indexOf$1$asx(t2.get$options(grade), J.firstWhere$1$ax(t2.get$options(grade), new K.clear_closure0())));
+      }
+      for (t1 = new W._FrozenElementList(document.querySelectorAll(".removeModifiers")), t1 = t1.get$iterator(t1); t1.moveNext$0();)
+        J.click$0$x(t1.__internal$_current);
+      for (t1 = new W._FrozenElementList(document.querySelectorAll("button.removeCategory")), t1 = t1.get$iterator(t1); t1.moveNext$0();)
+        J.click$0$x(t1.__internal$_current);
+      K.showNotification("Cleared", 3);
+    }
+  },
+  addListeners: function() {
+    var t1, heading, toggle, t2, t3, t4, t5, t6;
+    t1 = C.EventStreamProvider_resize.forTarget$1(window);
+    H.setRuntimeTypeInfo(new W._EventStreamSubscription(0, t1._html$_target, t1._eventType, W._wrapZone(new K.addListeners_closure()), t1._useCapture), [H.getTypeArgumentByIndex(t1, 0)])._tryResume$0();
+    C.EventStreamProvider_click._forElementList$1(new W._FrozenElementList(document.querySelectorAll("button"))).listen$1(new K.addListeners_closure0());
+    C.EventStreamProvider_change._forElementList$1(new W._FrozenElementList(document.querySelectorAll("input[type=checkbox]"))).listen$1(new K.addListeners_closure1());
+    C.EventStreamProvider_change._forElementList$1(new W._FrozenElementList(document.querySelectorAll(".modifier"))).listen$1(new K.addListeners_closure2());
+    C.EventStreamProvider_click._forElementList$1(new W._FrozenElementList(document.querySelectorAll("button.addCategory"))).listen$1(new K.addListeners_closure3());
+    C.EventStreamProvider_click._forElementList$1(new W._FrozenElementList(document.querySelectorAll("button.removeCategory"))).listen$1(new K.addListeners_closure4());
+    C.EventStreamProvider_click._forElementList$1(new W._FrozenElementList(document.querySelectorAll("button.removeModifiers"))).listen$1(new K.addListeners_closure5());
+    C.EventStreamProvider_click._forElementList$1(new W._FrozenElementList(document.querySelectorAll("button.showGrade"))).listen$1(new K.addListeners_closure6());
+    C.EventStreamProvider_change._forElementList$1(new W._FrozenElementList(document.querySelectorAll("select.grade, select.secondary"))).listen$1(new K.addListeners_closure7());
+    for (t1 = new W._FrozenElementList(document.querySelectorAll("h2.collapse")), t1 = t1.get$iterator(t1); t1.moveNext$0();) {
+      heading = t1.__internal$_current;
+      toggle = document.createElement("button", null);
+      t2 = J.getInterceptor$x(heading);
+      t3 = t2.get$text(heading);
+      t3.toString;
+      toggle.textContent = "Show " + t3.toLowerCase();
+      toggle.className = "sidebarButton";
+      t3 = J.get$onClick$x(toggle);
+      t4 = t3._eventType;
+      t5 = t3._useCapture;
+      t6 = new W._EventStreamSubscription(0, t3._html$_target, t4, W._wrapZone(new K.addListeners_closure8(heading)), t5);
+      t6.$builtinTypeInfo = [H.getTypeArgumentByIndex(t3, 0)];
+      t3 = t6._onData;
+      if (t3 != null && t6._pauseCount <= 0)
+        J.addEventListener$3$x(t6._html$_target, t4, t3, t5);
+      t2 = t2.get$onClick(heading);
+      t3 = t2._eventType;
+      t4 = t2._useCapture;
+      t5 = new W._EventStreamSubscription(0, t2._html$_target, t3, W._wrapZone(new K.addListeners_closure9(heading, toggle)), t4);
+      t5.$builtinTypeInfo = [H.getTypeArgumentByIndex(t2, 0)];
+      t2 = t5._onData;
+      if (t2 != null && t5._pauseCount <= 0)
+        J.addEventListener$3$x(t5._html$_target, t3, t2, t4);
+      J.get$children$x($.get$toggleButtons()).add$1(0, toggle);
+    }
+    t1 = J.get$onMouseDown$x($.get$output());
+    H.setRuntimeTypeInfo(new W._EventStreamSubscription(0, t1._html$_target, t1._eventType, W._wrapZone(new K.addListeners_closure10()), t1._useCapture), [H.getTypeArgumentByIndex(t1, 0)])._tryResume$0();
+    t1 = $.get$output();
+    t1.toString;
+    t1 = C.EventStreamProvider_copy.forElement$1(t1);
+    H.setRuntimeTypeInfo(new W._EventStreamSubscription(0, t1._html$_target, t1._eventType, W._wrapZone(new K.addListeners_closure11()), t1._useCapture), [H.getTypeArgumentByIndex(t1, 0)])._tryResume$0();
+    t1 = J.get$onClick$x($.get$clearButton());
+    H.setRuntimeTypeInfo(new W._EventStreamSubscription(0, t1._html$_target, t1._eventType, W._wrapZone(new K.addListeners_closure12()), t1._useCapture), [H.getTypeArgumentByIndex(t1, 0)])._tryResume$0();
+    t1 = J.get$onClick$x($.get$toggleMenuButton());
+    H.setRuntimeTypeInfo(new W._EventStreamSubscription(0, t1._html$_target, t1._eventType, W._wrapZone(new K.addListeners_closure13()), t1._useCapture), [H.getTypeArgumentByIndex(t1, 0)])._tryResume$0();
+    C.EventStreamProvider_click._forElementList$1(new W._FrozenElementList(document.querySelectorAll("button"))).listen$1(new K.addListeners_closure14());
+  },
+  buildUI_closure: {
+    "^": "Closure:2;",
+    call$1: function(_) {
+      return J.remove$0$ax($.get$loading());
+    }
+  },
+  buildCategories_closure: {
+    "^": "Closure:20;",
     call$1: function(e) {
-      return !!J.getInterceptor(e).$isInputElement && e.type === "checkbox" && e.checked === true;
+      var t1 = J.getInterceptor$x(e);
+      if (t1.get$metaKey(e) !== true && !C.JSArray_methods.contains$1($.get$keys(), t1.get$keyCode(e)))
+        e.preventDefault();
+      F.generate();
+    }
+  },
+  buildCategories_closure0: {
+    "^": "Closure:21;",
+    call$1: function(e) {
+      return J.preventDefault$0$x(e);
+    }
+  },
+  buildCategories_closure1: {
+    "^": "Closure:20;",
+    call$1: function(e) {
+      if (J.get$keyCode$x(e) === 27)
+        H.interceptedTypeCast(W._convertNativeToDart_EventTarget(e.target), "$isInputElement").value = "";
+      F.generate();
+    }
+  },
+  buildCategories_closure2: {
+    "^": "Closure:21;_captured_gradeSelect_0,_captured_codeSpan_1",
+    call$1: function(e) {
+      var selected = H.interceptedTypeCast(document.querySelector("input[type=radio][name='U']:checked"), "$isInputElement");
+      if (selected != null)
+        selected.checked = false;
+      J.set$disabled$x(this._captured_gradeSelect_0, false);
+      this._captured_codeSpan_1.textContent = C.JSString_methods.$add("U", H.interceptedTypeCast(J.get$target$x(e), "$isSelectElement").value);
+      F.generate();
+    }
+  },
+  buildCategories_closure3: {
+    "^": "Closure:2;_captured_codeSpan_2,_captured_OSes_3",
+    call$1: function(_) {
+      J.set$selectedIndex$x(this._captured_OSes_3, 0);
+      this._captured_codeSpan_2.textContent = "U";
+      F.generate();
+    }
+  },
+  buildCategories_closure4: {
+    "^": "Closure:2;_captured_codeSpan_4,_captured_OSes_5",
+    call$1: function(_) {
+      J.set$selectedIndex$x(this._captured_OSes_5, 0);
+      this._captured_codeSpan_4.textContent = "U";
+      F.generate();
+    }
+  },
+  buildCategories_closure5: {
+    "^": "Closure:21;_captured_codeSpan_6",
+    call$1: function(e) {
+      this._captured_codeSpan_6.textContent = H.interceptedTypeCast(J.get$target$x(e), "$isSelectElement").value;
+    }
+  },
+  buildCategories_closure6: {
+    "^": "Closure:2;_captured_codeSpan_7,_captured_genders_8",
+    call$1: function(_) {
+      J.set$selectedIndex$x(this._captured_genders_8, 0);
+      this._captured_codeSpan_7.textContent = "z";
     }
   },
   showNotification_closure: {
     "^": "Closure:0;",
     call$0: function() {
       var t1 = $.get$notification().style;
-      J.getInterceptor$x(t1).set$backgroundColor(t1, "gray");
-      C.CssStyleDeclaration_methods.set$paddingTop(t1, "0px");
-      C.CssStyleDeclaration_methods.set$paddingBottom(t1, "0px");
-      C.CssStyleDeclaration_methods.set$maxHeight(t1, "0");
+      t1.backgroundColor = "gray";
+      t1.paddingTop = "0px";
+      t1.paddingBottom = "0px";
+      t1.maxHeight = "0";
+    }
+  },
+  clear_closure: {
+    "^": "Closure:16;",
+    call$1: function(e) {
+      return !!J.getInterceptor(e).$isInputElement && e.type === "checkbox" && e.checked === true;
+    }
+  },
+  clear_closure0: {
+    "^": "Closure:22;",
+    call$1: function(option) {
+      return J.$eq(J.get$value$x(option), "0");
+    }
+  },
+  addListeners_closure: {
+    "^": "Closure:2;",
+    call$1: function(_) {
+      var t1 = window.innerWidth;
+      if (typeof t1 !== "number")
+        return t1.$gt();
+      if (t1 > 768)
+        J.get$classes$x(document.querySelector("#wrapper")).add$1(0, "showMenu");
+      else
+        J.get$classes$x(document.querySelector("#wrapper")).remove$1(0, "showMenu");
+    }
+  },
+  addListeners_closure0: {
+    "^": "Closure:21;",
+    call$1: function(e) {
+      return J.preventDefault$0$x(e);
+    }
+  },
+  addListeners_closure1: {
+    "^": "Closure:2;",
+    call$1: function(_) {
+      return F.generate();
+    }
+  },
+  addListeners_closure2: {
+    "^": "Closure:21;",
+    call$1: function(e) {
+      var target, t1, dropdown, secondary, exclusive, modifier;
+      target = H.interceptedTypeCast(J.get$target$x(e), "$isHtmlElement");
+      t1 = "select.grade[name='" + H.S(target.getAttribute("name")) + "']";
+      dropdown = H.interceptedTypeCast(document.querySelector(t1), "$isSelectElement");
+      t1 = "select.secondary[name='" + H.S(target.getAttribute("name")) + "']";
+      secondary = H.interceptedTypeCast(document.querySelector(t1), "$isSelectElement");
+      exclusive = target.classList.contains("exclusive");
+      if (!exclusive) {
+        for (t1 = ".modifier[name='" + H.S(target.getAttribute("name")) + "']", t1 = J.get$iterator$ax(document.querySelector(t1)); t1.moveNext$0(), false;) {
+          modifier = t1.get$current();
+          modifier.get$classes(modifier).contains$1(0, "exclusive");
+        }
+        exclusive = false;
+      }
+      if (exclusive) {
+        dropdown.disabled = true;
+        if (secondary != null)
+          secondary.disabled = true;
+      } else {
+        dropdown.disabled = false;
+        if (secondary != null)
+          secondary.disabled = false;
+      }
+      t1 = "button.removeModifiers[name='" + H.S(target.getAttribute("name")) + "']";
+      t1 = document.querySelector(t1).style;
+      t1.display = "inline-block";
+      F.generate();
+    }
+  },
+  addListeners_closure3: {
+    "^": "Closure:21;",
+    call$1: function(e) {
+      var target, t1, category;
+      target = H.interceptedTypeCast(J.get$target$x(e), "$isElement");
+      t1 = target.parentElement.style;
+      t1.height = "75px";
+      category = target.getAttribute("name");
+      t1 = target.style;
+      (t1 && C.CssStyleDeclaration_methods).set$opacity(t1, "0");
+      t1 = C._CustomEventStreamProvider__determineTransitionEventType.forElement$1(target);
+      t1.get$first(t1).then$1(new K.addListeners__closure1(target, category));
+    }
+  },
+  addListeners__closure1: {
+    "^": "Closure:2;_ui$_captured_target_0,_captured_category_1",
+    call$1: function(_) {
+      var t1 = "div.gradeContainer[name='" + H.S(this._captured_category_1) + "']";
+      t1 = document.querySelector(t1).style;
+      (t1 && C.CssStyleDeclaration_methods).set$opacity(t1, "1");
+      t1 = this._ui$_captured_target_0.style;
+      t1.display = "none";
+      F.generate();
+    }
+  },
+  addListeners_closure4: {
+    "^": "Closure:21;",
+    call$1: function(e) {
+      var target, category, t1, t2;
+      target = H.interceptedTypeCast(J.get$target$x(e), "$isElement");
+      target.parentElement.parentElement.parentElement.style.removeProperty("height");
+      category = target.getAttribute("name");
+      t1 = "div.gradeContainer[name='" + H.S(category) + "']";
+      t1 = document.querySelector(t1);
+      t2 = t1.style;
+      (t2 && C.CssStyleDeclaration_methods).set$opacity(t2, "0");
+      t1.toString;
+      t1 = C._CustomEventStreamProvider__determineTransitionEventType.forElement$1(t1);
+      t1.get$first(t1).then$1(new K.addListeners__closure0(category));
+    }
+  },
+  addListeners__closure0: {
+    "^": "Closure:2;_captured_category_2",
+    call$1: function(_) {
+      var t1 = "button.addCategory[name='" + H.S(this._captured_category_2) + "']";
+      t1 = document.querySelector(t1).style;
+      t1.display = "inline-block";
+      (t1 && C.CssStyleDeclaration_methods).set$opacity(t1, "1");
+      F.generate();
+    }
+  },
+  addListeners_closure5: {
+    "^": "Closure:21;",
+    call$1: function(e) {
+      var target, t1, selectedModifier, secondary;
+      target = H.interceptedTypeCast(J.get$target$x(e), "$isButtonElement");
+      t1 = target.style;
+      t1.display = "none";
+      t1 = "input[name='" + H.S(target.name) + "']:checked";
+      selectedModifier = H.interceptedTypeCast(document.querySelector(t1), "$isInputElement");
+      if (selectedModifier != null)
+        selectedModifier.checked = false;
+      t1 = "select.grade[name='" + H.S(target.name) + "']";
+      H.interceptedTypeCast(document.querySelector(t1), "$isSelectElement").disabled = false;
+      t1 = "select.secondary[name='" + H.S(target.name) + "']";
+      secondary = H.interceptedTypeCast(document.querySelector(t1), "$isSelectElement");
+      if (secondary != null)
+        secondary.disabled = false;
+    }
+  },
+  addListeners_closure6: {
+    "^": "Closure:21;",
+    call$1: function(e) {
+      var target, t1, select, t2;
+      target = H.interceptedTypeCast(J.get$target$x(e), "$isButtonElement");
+      t1 = "select[name='" + H.S(target.name) + "']";
+      select = H.interceptedTypeCast(document.querySelector(t1), "$isSelectElement");
+      t1 = (select && C.SelectElement_methods).get$options(select);
+      t2 = C.SelectElement_methods.get$options(select);
+      select.selectedIndex = t1.indexOf$1(t1, t2.firstWhere$1(t2, new K.addListeners__closure()));
+      t2 = "select[name='" + H.S(target.name) + "'],input[name=" + H.S(target.name) + "],input[name='" + H.S(target.name) + "']+label";
+      W._CssStyleDeclarationSet$(new W._FrozenElementList(document.querySelectorAll(t2)))._setAll$2("display", "inline-block");
+      t2 = "button.showGrade[name='" + H.S(target.name) + "'],input#customAge";
+      W._CssStyleDeclarationSet$(new W._FrozenElementList(document.querySelectorAll(t2)))._setAll$2("display", "none");
+    }
+  },
+  addListeners__closure: {
+    "^": "Closure:22;",
+    call$1: function(option) {
+      return J.$eq(J.get$value$x(option), "0");
+    }
+  },
+  addListeners_closure7: {
+    "^": "Closure:21;",
+    call$1: function(e) {
+      var target, t1, t2;
+      target = H.interceptedTypeCast(J.get$target$x(e), "$isSelectElement");
+      if (target.name === "a") {
+        t1 = (target && C.SelectElement_methods).get$options(target);
+        t2 = target.selectedIndex;
+        t1 = t1._collection$_source;
+        if (t2 >>> 0 !== t2 || t2 >= t1.length)
+          return H.ioore(t1, t2);
+        if (J.$eq(J.get$value$x(t1[t2]), "customAge")) {
+          t1 = "select[name=" + H.S(target.name) + "],input[name=" + H.S(target.name) + "],input[name=" + H.S(target.name) + "]+label";
+          W._CssStyleDeclarationSet$(new W._FrozenElementList(document.querySelectorAll(t1)))._setAll$2("display", "none");
+          t1 = "button.showGrade[name=" + H.S(target.name) + "],input#customAge";
+          W._CssStyleDeclarationSet$(new W._FrozenElementList(document.querySelectorAll(t1)))._setAll$2("display", "inline-block");
+        }
+      }
+      F.generate();
+    }
+  },
+  addListeners_closure8: {
+    "^": "Closure:2;_captured_heading_3",
+    call$1: function(_) {
+      return J.click$0$x(this._captured_heading_3);
+    }
+  },
+  addListeners_closure9: {
+    "^": "Closure:21;_captured_heading_4,_captured_toggle_5",
+    call$1: function(e) {
+      var next, t1, t2, t3;
+      next = H.interceptedTypeCast(J.get$target$x(e), "$isElement").nextElementSibling;
+      t1 = next.style.maxHeight;
+      t1 = t1 === "0px" || t1 === "";
+      t2 = this._captured_toggle_5;
+      t3 = this._captured_heading_4;
+      if (t1) {
+        t1 = J.get$text$x(t3);
+        t1.toString;
+        t2.textContent = "Hide " + t1.toLowerCase();
+        t1 = next.style;
+        t1.maxHeight = "1000px";
+        t1.height = "auto";
+        t1.paddingTop = "5px";
+        t1.paddingBottom = "5px";
+      } else {
+        t1 = J.get$text$x(t3);
+        t1.toString;
+        t2.textContent = "Show " + t1.toLowerCase();
+        t1 = next.style;
+        t1.paddingTop = "0px";
+        t1.paddingBottom = "0px";
+        t1.maxHeight = "0";
+      }
+    }
+  },
+  addListeners_closure10: {
+    "^": "Closure:23;",
+    call$1: function(e) {
+      J.preventDefault$0$x(e);
+      J.select$0$x($.get$output());
+    }
+  },
+  addListeners_closure11: {
+    "^": "Closure:2;",
+    call$1: function(_) {
+      if ($.get$output().textContent.length > 0)
+        K.showNotification("Copied to clipboard", 3);
+      else
+        K.showNotification("Nothing to copy!", 3);
+    }
+  },
+  addListeners_closure12: {
+    "^": "Closure:2;",
+    call$1: function(_) {
+      return K.clear();
+    }
+  },
+  addListeners_closure13: {
+    "^": "Closure:2;",
+    call$1: function(_) {
+      var wrapper, t1;
+      wrapper = document.querySelector("#wrapper");
+      t1 = J.getInterceptor$x(wrapper);
+      if (t1.get$classes(wrapper).contains$1(0, "showMenu"))
+        t1.get$classes(wrapper).remove$1(0, "showMenu");
+      else
+        t1.get$classes(wrapper).add$1(0, "showMenu");
+    }
+  },
+  addListeners_closure14: {
+    "^": "Closure:2;",
+    call$1: function(_) {
+      return F.generate();
     }
   }
-},
-1],
+}],
 ];
 setupProgram(dart);
 // getInterceptor methods
@@ -9065,29 +9990,26 @@ J.addEventListener$3$x = function(receiver, a0, a1, a2) {
 J.click$0$x = function(receiver) {
   return J.getInterceptor$x(receiver).click$0(receiver);
 };
-J.contains$1$asx = function(receiver, a0) {
-  return J.getInterceptor$asx(receiver).contains$1(receiver, a0);
-};
 J.contains$2$asx = function(receiver, a0, a1) {
   return J.getInterceptor$asx(receiver).contains$2(receiver, a0, a1);
 };
 J.elementAt$1$ax = function(receiver, a0) {
   return J.getInterceptor$ax(receiver).elementAt$1(receiver, a0);
 };
+J.firstWhere$1$ax = function(receiver, a0) {
+  return J.getInterceptor$ax(receiver).firstWhere$1(receiver, a0);
+};
 J.forEach$1$ax = function(receiver, a0) {
   return J.getInterceptor$ax(receiver).forEach$1(receiver, a0);
+};
+J.get$checked$x = function(receiver) {
+  return J.getInterceptor$x(receiver).get$checked(receiver);
 };
 J.get$children$x = function(receiver) {
   return J.getInterceptor$x(receiver).get$children(receiver);
 };
-J.get$className$x = function(receiver) {
-  return J.getInterceptor$x(receiver).get$className(receiver);
-};
 J.get$classes$x = function(receiver) {
   return J.getInterceptor$x(receiver).get$classes(receiver);
-};
-J.get$display$x = function(receiver) {
-  return J.getInterceptor$x(receiver).get$display(receiver);
 };
 J.get$error$x = function(receiver) {
   return J.getInterceptor$x(receiver).get$error(receiver);
@@ -9098,17 +10020,23 @@ J.get$hashCode$ = function(receiver) {
 J.get$iterator$ax = function(receiver) {
   return J.getInterceptor$ax(receiver).get$iterator(receiver);
 };
+J.get$keyCode$x = function(receiver) {
+  return J.getInterceptor$x(receiver).get$keyCode(receiver);
+};
 J.get$length$asx = function(receiver) {
   return J.getInterceptor$asx(receiver).get$length(receiver);
-};
-J.get$maxHeight$x = function(receiver) {
-  return J.getInterceptor$x(receiver).get$maxHeight(receiver);
 };
 J.get$onClick$x = function(receiver) {
   return J.getInterceptor$x(receiver).get$onClick(receiver);
 };
 J.get$onMouseDown$x = function(receiver) {
   return J.getInterceptor$x(receiver).get$onMouseDown(receiver);
+};
+J.get$opacity$x = function(receiver) {
+  return J.getInterceptor$x(receiver).get$opacity(receiver);
+};
+J.get$parent$x = function(receiver) {
+  return J.getInterceptor$x(receiver).get$parent(receiver);
 };
 J.get$style$x = function(receiver) {
   return J.getInterceptor$x(receiver).get$style(receiver);
@@ -9125,6 +10053,9 @@ J.get$value$x = function(receiver) {
 J.getPropertyValue$1$x = function(receiver, a0) {
   return J.getInterceptor$x(receiver).getPropertyValue$1(receiver, a0);
 };
+J.indexOf$1$asx = function(receiver, a0) {
+  return J.getInterceptor$asx(receiver).indexOf$1(receiver, a0);
+};
 J.map$1$ax = function(receiver, a0) {
   return J.getInterceptor$ax(receiver).map$1(receiver, a0);
 };
@@ -9133,9 +10064,6 @@ J.preventDefault$0$x = function(receiver) {
 };
 J.remove$0$ax = function(receiver) {
   return J.getInterceptor$ax(receiver).remove$0(receiver);
-};
-J.remove$1$ax = function(receiver, a0) {
-  return J.getInterceptor$ax(receiver).remove$1(receiver, a0);
 };
 J.removeEventListener$3$x = function(receiver, a0, a1, a2) {
   return J.getInterceptor$x(receiver).removeEventListener$3(receiver, a0, a1, a2);
@@ -9146,20 +10074,29 @@ J.replaceWith$1$x = function(receiver, a0) {
 J.select$0$x = function(receiver) {
   return J.getInterceptor$x(receiver).select$0(receiver);
 };
-J.set$className$x = function(receiver, value) {
-  return J.getInterceptor$x(receiver).set$className(receiver, value);
+J.set$disabled$x = function(receiver, value) {
+  return J.getInterceptor$x(receiver).set$disabled(receiver, value);
 };
-J.set$color$x = function(receiver, value) {
-  return J.getInterceptor$x(receiver).set$color(receiver, value);
+J.set$htmlFor$x = function(receiver, value) {
+  return J.getInterceptor$x(receiver).set$htmlFor(receiver, value);
 };
-J.set$display$x = function(receiver, value) {
-  return J.getInterceptor$x(receiver).set$display(receiver, value);
+J.set$name$x = function(receiver, value) {
+  return J.getInterceptor$x(receiver).set$name(receiver, value);
 };
-J.set$opacity$x = function(receiver, value) {
-  return J.getInterceptor$x(receiver).set$opacity(receiver, value);
+J.set$selectedIndex$x = function(receiver, value) {
+  return J.getInterceptor$x(receiver).set$selectedIndex(receiver, value);
+};
+J.set$type$x = function(receiver, value) {
+  return J.getInterceptor$x(receiver).set$type(receiver, value);
 };
 J.setProperty$3$x = function(receiver, a0, a1, a2) {
   return J.getInterceptor$x(receiver).setProperty$3(receiver, a0, a1, a2);
+};
+J.substring$2$s = function(receiver, a0, a1) {
+  return J.getInterceptor$s(receiver).substring$2(receiver, a0, a1);
+};
+J.toLowerCase$0$s = function(receiver) {
+  return J.getInterceptor$s(receiver).toLowerCase$0(receiver);
 };
 J.toString$0 = function(receiver) {
   return J.getInterceptor(receiver).toString$0(receiver);
@@ -9173,6 +10110,7 @@ C.JSInt_methods = J.JSInt.prototype;
 C.JSString_methods = J.JSString.prototype;
 C.NodeList_methods = W.NodeList.prototype;
 C.PlainJavaScriptObject_methods = J.PlainJavaScriptObject.prototype;
+C.SelectElement_methods = W.SelectElement.prototype;
 C.UnknownJavaScriptObject_methods = J.UnknownJavaScriptObject.prototype;
 C.C_DynamicRuntimeType = new H.DynamicRuntimeType();
 C.C__DelayedDone = new P._DelayedDone();
@@ -9181,7 +10119,10 @@ C.Duration_0 = new P.Duration(0);
 C.EventStreamProvider_change = new W.EventStreamProvider("change");
 C.EventStreamProvider_click = new W.EventStreamProvider("click");
 C.EventStreamProvider_copy = new W.EventStreamProvider("copy");
+C.EventStreamProvider_keydown = new W.EventStreamProvider("keydown");
+C.EventStreamProvider_keyup = new W.EventStreamProvider("keyup");
 C.EventStreamProvider_mousedown = new W.EventStreamProvider("mousedown");
+C.EventStreamProvider_paste = new W.EventStreamProvider("paste");
 C.EventStreamProvider_resize = new W.EventStreamProvider("resize");
 C.Gender_0 = new V.Gender(0);
 C.Gender_1 = new V.Gender(1);
@@ -9380,26 +10321,30 @@ $.Device__isWebKit = null;
 $.Device__cachedCssPrefix = null;
 $.code = null;
 $.notificationTimer = null;
-Isolate.$lazy($, "thisScript", "IsolateNatives_thisScript", "get$IsolateNatives_thisScript", function() {
+(function(lazies) {
+  var descriptorLength = 4;
+  for (var i = 0; i < lazies.length; i += descriptorLength) {
+    var fieldName = lazies[i];
+    var getterName = lazies[i + 1];
+    var lazyValue = lazies[i + 2];
+    var staticName = lazies[i + 3];
+    Isolate.$lazy(fieldName, getterName, lazyValue, staticName);
+  }
+})(["IsolateNatives_thisScript", "get$IsolateNatives_thisScript", function() {
   return H.IsolateNatives_computeThisScript();
-});
-Isolate.$lazy($, "workerIds", "IsolateNatives_workerIds", "get$IsolateNatives_workerIds", function() {
+}, "thisScript", "IsolateNatives_workerIds", "get$IsolateNatives_workerIds", function() {
   return new P.Expando(null);
-});
-Isolate.$lazy($, "noSuchMethodPattern", "TypeErrorDecoder_noSuchMethodPattern", "get$TypeErrorDecoder_noSuchMethodPattern", function() {
+}, "workerIds", "TypeErrorDecoder_noSuchMethodPattern", "get$TypeErrorDecoder_noSuchMethodPattern", function() {
   return H.TypeErrorDecoder_extractPattern(H.TypeErrorDecoder_provokeCallErrorOn({toString: function() {
       return "$receiver$";
     }}));
-});
-Isolate.$lazy($, "notClosurePattern", "TypeErrorDecoder_notClosurePattern", "get$TypeErrorDecoder_notClosurePattern", function() {
+}, "noSuchMethodPattern", "TypeErrorDecoder_notClosurePattern", "get$TypeErrorDecoder_notClosurePattern", function() {
   return H.TypeErrorDecoder_extractPattern(H.TypeErrorDecoder_provokeCallErrorOn({$method$: null, toString: function() {
       return "$receiver$";
     }}));
-});
-Isolate.$lazy($, "nullCallPattern", "TypeErrorDecoder_nullCallPattern", "get$TypeErrorDecoder_nullCallPattern", function() {
+}, "notClosurePattern", "TypeErrorDecoder_nullCallPattern", "get$TypeErrorDecoder_nullCallPattern", function() {
   return H.TypeErrorDecoder_extractPattern(H.TypeErrorDecoder_provokeCallErrorOn(null));
-});
-Isolate.$lazy($, "nullLiteralCallPattern", "TypeErrorDecoder_nullLiteralCallPattern", "get$TypeErrorDecoder_nullLiteralCallPattern", function() {
+}, "nullCallPattern", "TypeErrorDecoder_nullLiteralCallPattern", "get$TypeErrorDecoder_nullLiteralCallPattern", function() {
   return H.TypeErrorDecoder_extractPattern(function() {
     var $argumentsExpr$ = '$arguments$';
     try {
@@ -9408,11 +10353,9 @@ Isolate.$lazy($, "nullLiteralCallPattern", "TypeErrorDecoder_nullLiteralCallPatt
       return e.message;
     }
   }());
-});
-Isolate.$lazy($, "undefinedCallPattern", "TypeErrorDecoder_undefinedCallPattern", "get$TypeErrorDecoder_undefinedCallPattern", function() {
+}, "nullLiteralCallPattern", "TypeErrorDecoder_undefinedCallPattern", "get$TypeErrorDecoder_undefinedCallPattern", function() {
   return H.TypeErrorDecoder_extractPattern(H.TypeErrorDecoder_provokeCallErrorOn(void 0));
-});
-Isolate.$lazy($, "undefinedLiteralCallPattern", "TypeErrorDecoder_undefinedLiteralCallPattern", "get$TypeErrorDecoder_undefinedLiteralCallPattern", function() {
+}, "undefinedCallPattern", "TypeErrorDecoder_undefinedLiteralCallPattern", "get$TypeErrorDecoder_undefinedLiteralCallPattern", function() {
   return H.TypeErrorDecoder_extractPattern(function() {
     var $argumentsExpr$ = '$arguments$';
     try {
@@ -9421,11 +10364,9 @@ Isolate.$lazy($, "undefinedLiteralCallPattern", "TypeErrorDecoder_undefinedLiter
       return e.message;
     }
   }());
-});
-Isolate.$lazy($, "nullPropertyPattern", "TypeErrorDecoder_nullPropertyPattern", "get$TypeErrorDecoder_nullPropertyPattern", function() {
+}, "undefinedLiteralCallPattern", "TypeErrorDecoder_nullPropertyPattern", "get$TypeErrorDecoder_nullPropertyPattern", function() {
   return H.TypeErrorDecoder_extractPattern(H.TypeErrorDecoder_provokePropertyErrorOn(null));
-});
-Isolate.$lazy($, "nullLiteralPropertyPattern", "TypeErrorDecoder_nullLiteralPropertyPattern", "get$TypeErrorDecoder_nullLiteralPropertyPattern", function() {
+}, "nullPropertyPattern", "TypeErrorDecoder_nullLiteralPropertyPattern", "get$TypeErrorDecoder_nullLiteralPropertyPattern", function() {
   return H.TypeErrorDecoder_extractPattern(function() {
     try {
       null.$method$;
@@ -9433,11 +10374,9 @@ Isolate.$lazy($, "nullLiteralPropertyPattern", "TypeErrorDecoder_nullLiteralProp
       return e.message;
     }
   }());
-});
-Isolate.$lazy($, "undefinedPropertyPattern", "TypeErrorDecoder_undefinedPropertyPattern", "get$TypeErrorDecoder_undefinedPropertyPattern", function() {
+}, "nullLiteralPropertyPattern", "TypeErrorDecoder_undefinedPropertyPattern", "get$TypeErrorDecoder_undefinedPropertyPattern", function() {
   return H.TypeErrorDecoder_extractPattern(H.TypeErrorDecoder_provokePropertyErrorOn(void 0));
-});
-Isolate.$lazy($, "undefinedLiteralPropertyPattern", "TypeErrorDecoder_undefinedLiteralPropertyPattern", "get$TypeErrorDecoder_undefinedLiteralPropertyPattern", function() {
+}, "undefinedPropertyPattern", "TypeErrorDecoder_undefinedLiteralPropertyPattern", "get$TypeErrorDecoder_undefinedLiteralPropertyPattern", function() {
   return H.TypeErrorDecoder_extractPattern(function() {
     try {
       (void 0).$method$;
@@ -9445,124 +10384,154 @@ Isolate.$lazy($, "undefinedLiteralPropertyPattern", "TypeErrorDecoder_undefinedL
       return e.message;
     }
   }());
-});
-Isolate.$lazy($, "scheduleImmediateClosure", "_AsyncRun_scheduleImmediateClosure", "get$_AsyncRun_scheduleImmediateClosure", function() {
+}, "undefinedLiteralPropertyPattern", "_AsyncRun_scheduleImmediateClosure", "get$_AsyncRun_scheduleImmediateClosure", function() {
   return P._AsyncRun__initializeScheduleImmediate();
-});
-Isolate.$lazy($, "_toStringVisiting", "IterableBase__toStringVisiting", "get$IterableBase__toStringVisiting", function() {
+}, "scheduleImmediateClosure", "IterableBase__toStringVisiting", "get$IterableBase__toStringVisiting", function() {
   return [];
-});
-Isolate.$lazy($, "NO_QUALIFICATIONS", "G_NO_QUALIFICATIONS", "get$G_NO_QUALIFICATIONS", function() {
-  return Z.GeekCodeType$("!");
-});
-Isolate.$lazy($, "B", "G312_B", "get$G312_B", function() {
-  return Z.GeekCodeType$("B");
-});
-Isolate.$lazy($, "C", "G312_C", "get$G312_C", function() {
-  return Z.GeekCodeType$("C");
-});
-Isolate.$lazy($, "CA", "G312_CA", "get$G312_CA", function() {
-  return Z.GeekCodeType$("CA");
-});
-Isolate.$lazy($, "CM", "G312_CM", "get$G312_CM", function() {
-  return Z.GeekCodeType$("CM");
-});
-Isolate.$lazy($, "CS", "G312_CS", "get$G312_CS", function() {
-  return Z.GeekCodeType$("CS");
-});
-Isolate.$lazy($, "CC", "G312_CC", "get$G312_CC", function() {
-  return Z.GeekCodeType$("CC");
-});
-Isolate.$lazy($, "E", "G312_E", "get$G312_E", function() {
-  return Z.GeekCodeType$("E");
-});
-Isolate.$lazy($, "ED", "G312_ED", "get$G312_ED", function() {
-  return Z.GeekCodeType$("ED");
-});
-Isolate.$lazy($, "FA", "G312_FA", "get$G312_FA", function() {
-  return Z.GeekCodeType$("FA");
-});
-Isolate.$lazy($, "G", "G312_G", "get$G312_G", function() {
-  return Z.GeekCodeType$("G");
-});
-Isolate.$lazy($, "H", "G312_H", "get$G312_H", function() {
-  return Z.GeekCodeType$("H");
-});
-Isolate.$lazy($, "IT", "G312_IT", "get$G312_IT", function() {
-  return Z.GeekCodeType$("IT");
-});
-Isolate.$lazy($, "J", "G312_J", "get$G312_J", function() {
-  return Z.GeekCodeType$("J");
-});
-Isolate.$lazy($, "LS", "G312_LS", "get$G312_LS", function() {
-  return Z.GeekCodeType$("LS");
-});
-Isolate.$lazy($, "L", "G312_L", "get$G312_L", function() {
-  return Z.GeekCodeType$("L");
-});
-Isolate.$lazy($, "MC", "G312_MC", "get$G312_MC", function() {
-  return Z.GeekCodeType$("MC");
-});
-Isolate.$lazy($, "M", "G312_M", "get$G312_M", function() {
-  return Z.GeekCodeType$("M");
-});
-Isolate.$lazy($, "MD", "G312_MD", "get$G312_MD", function() {
-  return Z.GeekCodeType$("MD");
-});
-Isolate.$lazy($, "MU", "G312_MU", "get$G312_MU", function() {
-  return Z.GeekCodeType$("MU");
-});
-Isolate.$lazy($, "PA", "G312_PA", "get$G312_PA", function() {
-  return Z.GeekCodeType$("PA");
-});
-Isolate.$lazy($, "P", "G312_P", "get$G312_P", function() {
-  return Z.GeekCodeType$("P");
-});
-Isolate.$lazy($, "S", "G312_S", "get$G312_S", function() {
-  return Z.GeekCodeType$("S");
-});
-Isolate.$lazy($, "SS", "G312_SS", "get$G312_SS", function() {
-  return Z.GeekCodeType$("SS");
-});
-Isolate.$lazy($, "TW", "G312_TW", "get$G312_TW", function() {
-  return Z.GeekCodeType$("TW");
-});
-Isolate.$lazy($, "O", "G312_O", "get$G312_O", function() {
-  return Z.GeekCodeType$("O");
-});
-Isolate.$lazy($, "U", "G312_U", "get$G312_U", function() {
-  return Z.GeekCodeType$("U");
-});
-Isolate.$lazy($, "AT", "G312_AT", "get$G312_AT", function() {
-  return Z.GeekCodeType$("AT");
-});
-Isolate.$lazy($, "headings", "headings", "get$headings", function() {
-  return P.LinkedHashMap_LinkedHashMap$_literal(["types", W.querySelector("h2#types"), "appearance", W.querySelector("h2#appearance")], null, null);
-});
-Isolate.$lazy($, "forms", "forms", "get$forms", function() {
-  return P.LinkedHashMap_LinkedHashMap$_literal(["types", W.querySelector("form#typesForm"), "categories", W.querySelector("form#categoriesForm")], null, null);
-});
-Isolate.$lazy($, "loading", "loading", "get$loading", function() {
-  return W.querySelector("div#loading");
-});
-Isolate.$lazy($, "output", "output", "get$output", function() {
-  return W.querySelector("#output");
-});
-Isolate.$lazy($, "notification", "notification", "get$notification", function() {
-  return W.querySelector("#notification");
-});
-Isolate.$lazy($, "toggleButtons", "toggleButtons", "get$toggleButtons", function() {
-  return W.querySelector("#toggleButtons");
-});
-Isolate.$lazy($, "clearButton", "clearButton", "get$clearButton", function() {
-  return W.querySelector("#clear");
-});
-Isolate.$lazy($, "toggleMenuButton", "toggleMenuButton", "get$toggleMenuButton", function() {
-  return W.querySelector("#toggleMenu");
-});
-Isolate.$lazy($, "allTypes", "allTypes", "get$allTypes", function() {
+}, "_toStringVisiting", "CssStyleDeclaration__propertyCache", "get$CssStyleDeclaration__propertyCache", function() {
+  return {};
+}, "_propertyCache", "G_NO_QUALIFICATIONS", "get$G_NO_QUALIFICATIONS", function() {
+  return Z.GeekCodeType$("!", "Geek of no qualifications. A rather miserable existence, you would think.");
+}, "NO_QUALIFICATIONS", "G312_B", "get$G312_B", function() {
+  return Z.GeekCodeType$("B", "Geek of Business");
+}, "B", "G312_C", "get$G312_C", function() {
+  return Z.GeekCodeType$("C", "Geek of Classics");
+}, "C", "G312_CA", "get$G312_CA", function() {
+  return Z.GeekCodeType$("CA", "Geek of Commercial Arts");
+}, "CA", "G312_CM", "get$G312_CM", function() {
+  return Z.GeekCodeType$("CM", "Geek of Computer Management");
+}, "CM", "G312_CS", "get$G312_CS", function() {
+  return Z.GeekCodeType$("CS", "Geek of Computer Science");
+}, "CS", "G312_CC", "get$G312_CC", function() {
+  return Z.GeekCodeType$("CC", "Geek of Communications");
+}, "CC", "G312_E", "get$G312_E", function() {
+  return Z.GeekCodeType$("E", "Geek of Engineering");
+}, "E", "G312_ED", "get$G312_ED", function() {
+  return Z.GeekCodeType$("ED", "Geek of Education");
+}, "ED", "G312_FA", "get$G312_FA", function() {
+  return Z.GeekCodeType$("FA", "Geek of Fine Arts");
+}, "FA", "G312_G", "get$G312_G", function() {
+  return Z.GeekCodeType$("G", "Geek of Government");
+}, "G", "G312_H", "get$G312_H", function() {
+  return Z.GeekCodeType$("H", "Geek of Humanities");
+}, "H", "G312_IT", "get$G312_IT", function() {
+  return Z.GeekCodeType$("IT", "Geek of Information Technology");
+}, "IT", "G312_J", "get$G312_J", function() {
+  return Z.GeekCodeType$("J", "Geek of Jurisprudence (Law)");
+}, "J", "G312_LS", "get$G312_LS", function() {
+  return Z.GeekCodeType$("LS", "Geek of Library Science");
+}, "LS", "G312_L", "get$G312_L", function() {
+  return Z.GeekCodeType$("L", "Geek of Literature");
+}, "L", "G312_MC", "get$G312_MC", function() {
+  return Z.GeekCodeType$("MC", "Geek of Mass Communications");
+}, "MC", "G312_M", "get$G312_M", function() {
+  return Z.GeekCodeType$("M", "Geek of Math");
+}, "M", "G312_MD", "get$G312_MD", function() {
+  return Z.GeekCodeType$("MD", "Geek of Medicine");
+}, "MD", "G312_MU", "get$G312_MU", function() {
+  return Z.GeekCodeType$("MU", "Geek of Music");
+}, "MU", "G312_PA", "get$G312_PA", function() {
+  return Z.GeekCodeType$("PA", "Geek of Performing Arts");
+}, "PA", "G312_P", "get$G312_P", function() {
+  return Z.GeekCodeType$("P", "Geek of Philosophy");
+}, "P", "G312_S", "get$G312_S", function() {
+  return Z.GeekCodeType$("S", "Geek of Science (Physics, Chemistry, Biology, etc.)");
+}, "S", "G312_SS", "get$G312_SS", function() {
+  return Z.GeekCodeType$("SS", "Geek of Social Science (Psychology, Sociology, etc.)");
+}, "SS", "G312_TW", "get$G312_TW", function() {
+  return Z.GeekCodeType$("TW", "Geek of Technical Writing");
+}, "TW", "G312_O", "get$G312_O", function() {
+  return Z.GeekCodeType$("O", "Geek of Other. Some types of geeks deviate from the normal geek activities. This is encouraged as true geeks come from all walks of life.");
+}, "O", "G312_U", "get$G312_U", function() {
+  return Z.GeekCodeType$("U", "Geek of 'Undecided'. This is a popular vocation with incoming freshmen.");
+}, "U", "G312_AT", "get$G312_AT", function() {
+  return Z.GeekCodeType$("AT", "Geek of All Trades. For those geeks that can do anything and everything. GAT usually precludes the use of other vocational descriptors.");
+}, "AT", "d", "get$d", function() {
+  return H.interceptedTypeCast(V.getBuilder("d"), "$isDressGeekCodeCategoryBuilder");
+}, "d", "s", "get$s", function() {
+  return H.interceptedTypeCast(V.getBuilder("s"), "$isShapeGeekCodeCategoryBuilder");
+}, "s", "a", "get$a", function() {
+  return H.interceptedTypeCast(V.getBuilder("a"), "$isAgeGeekCodeCategoryBuilder");
+}, "a", "C", "get$C", function() {
+  return H.interceptedTypeCast(V.getBuilder("C"), "$isGenericGeekCodeCategoryBuilder");
+}, "C", "U", "get$U", function() {
+  return H.interceptedTypeCast(V.getBuilder("U"), "$isUnixGeekCodeCategoryBuilder");
+}, "U", "P", "get$P", function() {
+  return H.interceptedTypeCast(V.getBuilder("P"), "$isGenericGeekCodeCategoryBuilder");
+}, "P", "L", "get$L", function() {
+  return H.interceptedTypeCast(V.getBuilder("L"), "$isGenericGeekCodeCategoryBuilder");
+}, "L", "E", "get$E", function() {
+  return H.interceptedTypeCast(V.getBuilder("E"), "$isGenericGeekCodeCategoryBuilder");
+}, "E", "W", "get$W", function() {
+  return H.interceptedTypeCast(V.getBuilder("W"), "$isGenericGeekCodeCategoryBuilder");
+}, "W", "N", "get$N", function() {
+  return H.interceptedTypeCast(V.getBuilder("N"), "$isExtremeGenericGeekCodeCategoryBuilder");
+}, "N", "o", "get$o", function() {
+  return H.interceptedTypeCast(V.getBuilder("o"), "$isGenericGeekCodeCategoryBuilder");
+}, "o", "K", "get$K", function() {
+  return H.interceptedTypeCast(V.getBuilder("K"), "$isGenericGeekCodeCategoryBuilder");
+}, "K", "O", "get$O", function() {
+  return H.interceptedTypeCast(V.getBuilder("O"), "$isGenericGeekCodeCategoryBuilder");
+}, "O", "M", "get$M", function() {
+  return H.interceptedTypeCast(V.getBuilder("M"), "$isGenericGeekCodeCategoryBuilder");
+}, "M", "V", "get$V", function() {
+  return H.interceptedTypeCast(V.getBuilder("V"), "$isGenericGeekCodeCategoryBuilder");
+}, "V", "PS", "get$PS", function() {
+  return H.interceptedTypeCast(V.getBuilder("PS"), "$isGenericGeekCodeCategoryBuilder");
+}, "PS", "PE", "get$PE", function() {
+  return H.interceptedTypeCast(V.getBuilder("PE"), "$isGenericGeekCodeCategoryBuilder");
+}, "PE", "Y", "get$Y", function() {
+  return H.interceptedTypeCast(V.getBuilder("Y"), "$isGenericGeekCodeCategoryBuilder");
+}, "Y", "PGP", "get$PGP", function() {
+  return H.interceptedTypeCast(V.getBuilder("PGP"), "$isGenericGeekCodeCategoryBuilder");
+}, "PGP", "t", "get$t", function() {
+  return H.interceptedTypeCast(V.getBuilder("t"), "$isExtremeGenericGeekCodeCategoryBuilder");
+}, "t", "BABYLON5", "get$BABYLON5", function() {
+  return H.interceptedTypeCast(V.getBuilder("5"), "$isGenericGeekCodeCategoryBuilder");
+}, "BABYLON5", "X", "get$X", function() {
+  return H.interceptedTypeCast(V.getBuilder("X"), "$isGenericGeekCodeCategoryBuilder");
+}, "X", "R", "get$R", function() {
+  return H.interceptedTypeCast(V.getBuilder("R"), "$isExtremeGenericGeekCodeCategoryBuilder");
+}, "R", "tv", "get$tv", function() {
+  return H.interceptedTypeCast(V.getBuilder("tv"), "$isGenericGeekCodeCategoryBuilder");
+}, "tv", "b", "get$b", function() {
+  return H.interceptedTypeCast(V.getBuilder("b"), "$isGenericGeekCodeCategoryBuilder");
+}, "b", "DI", "get$DI", function() {
+  return H.interceptedTypeCast(V.getBuilder("DI"), "$isGenericGeekCodeCategoryBuilder");
+}, "DI", "D", "get$D", function() {
+  return H.interceptedTypeCast(V.getBuilder("D"), "$isGenericGeekCodeCategoryBuilder");
+}, "D", "GCode", "get$GCode", function() {
+  return H.interceptedTypeCast(V.getBuilder("G"), "$isGenericGeekCodeCategoryBuilder");
+}, "GCode", "e", "get$e", function() {
+  return H.interceptedTypeCast(V.getBuilder("e"), "$isExtremeGenericGeekCodeCategoryBuilder");
+}, "e", "h", "get$h", function() {
+  return H.interceptedTypeCast(V.getBuilder("h"), "$isExtremeGenericGeekCodeCategoryBuilder");
+}, "h", "r", "get$r", function() {
+  return H.interceptedTypeCast(V.getBuilder("r"), "$isRelationshipsGeekCodeCategoryBuilder");
+}, "r", "z", "get$z", function() {
+  return H.interceptedTypeCast(V.getBuilder("z"), "$isSexGeekCodeCategoryBuilder");
+}, "z", "CssClassSetImpl__validTokenRE", "get$CssClassSetImpl__validTokenRE", function() {
+  return new H.JSSyntaxRegExp("^\\S+$", H.JSSyntaxRegExp_makeNative("^\\S+$", false, true, false), null, null);
+}, "_validTokenRE", "sections", "get$sections", function() {
+  return P.LinkedHashMap_LinkedHashMap$_literal(["Appearance", [$.get$d(), $.get$s(), $.get$a()], "Computers", [$.get$C(), $.get$U(), $.get$P(), $.get$L(), $.get$E(), $.get$W(), $.get$N(), $.get$o(), $.get$K(), $.get$O(), $.get$M(), $.get$V()], "Politics", [$.get$PS(), $.get$PE(), $.get$Y(), $.get$PGP()], "Entertainment", [$.get$t(), $.get$BABYLON5(), $.get$X(), $.get$R(), $.get$tv(), $.get$b(), $.get$DI(), $.get$D(), $.get$GCode()], "Lifestyle", [$.get$e(), $.get$h(), $.get$r(), $.get$z()]], null, null);
+}, "sections", "allTypes", "get$allTypes", function() {
   return [$.get$G312_AT(), $.get$G312_B(), $.get$G312_C(), $.get$G312_CA(), $.get$G312_CC(), $.get$G312_CM(), $.get$G312_CS(), $.get$G312_E(), $.get$G312_ED(), $.get$G312_FA(), $.get$G312_G(), $.get$G312_H(), $.get$G312_IT(), $.get$G312_J(), $.get$G312_L(), $.get$G312_LS(), $.get$G312_M(), $.get$G312_MC(), $.get$G312_MD(), $.get$G312_MU(), $.get$G312_O(), $.get$G312_P(), $.get$G312_PA(), $.get$G312_S(), $.get$G312_SS(), $.get$G312_TW(), $.get$G312_U(), $.get$G_NO_QUALIFICATIONS()];
-});
+}, "allTypes", "loading", "get$loading", function() {
+  return W.querySelector("div#loading");
+}, "loading", "output", "get$output", function() {
+  return W.querySelector("#output");
+}, "output", "notification", "get$notification", function() {
+  return W.querySelector("#notification");
+}, "notification", "toggleButtons", "get$toggleButtons", function() {
+  return W.querySelector("#toggleButtons");
+}, "toggleButtons", "clearButton", "get$clearButton", function() {
+  return W.querySelector("#clear");
+}, "clearButton", "toggleMenuButton", "get$toggleMenuButton", function() {
+  return W.querySelector("#toggleMenu");
+}, "toggleMenuButton", "keys", "get$keys", function() {
+  return [39, 37, 38, 40, 36, 45, 45, 8, 46, 35, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 97, 98, 99, 100, 101, 102, 103, 104, 105, 96];
+}, "keys"]);
+;
 
 init.metadata = [,
 ];
@@ -9582,12 +10551,14 @@ init.types = [{func: ""},
 {func: "", args: [P.Symbol,,]},
 {func: "", ret: P.String, args: [P.$int]},
 {func: "", ret: V.UnixGeekCodeCategoryBuilder, args: [V.UnixType]},
-{func: "", args: [W.Event]},
-{func: "", args: [W.MouseEvent]},
 {func: "", args: [W.Element]},
 {func: "", args: [W.InputElement]},
 {func: "", args: [Z.GeekCodeType]},
 {func: "", args: [W.SelectElement]},
+{func: "", args: [W.KeyboardEvent]},
+{func: "", args: [W.Event]},
+{func: "", args: [W.OptionElement]},
+{func: "", args: [W.MouseEvent]},
 {func: "", void: true, args: [{func: "", void: true}]},
 {func: "", void: true, args: [,]},
 {func: "", ret: P.bool, args: [,,]},
@@ -9611,9 +10582,6 @@ function convertToSlowObject(properties) {
   properties.__MAGIC_SLOW_PROPERTY = 1;
   delete properties.__MAGIC_SLOW_PROPERTY;
   return properties;
-}
-;
-function markerFun() {
 }
 ;
 A = convertToFastObject(A);
@@ -9650,30 +10618,31 @@ function init() {
   init.interceptorsByTag = Object.create(null);
   init.leafTags = Object.create(null);
   init.finishedClasses = Object.create(null);
-  Isolate.$lazy = function(prototype, staticName, fieldName, getterName, lazyValue) {
+  Isolate.$lazy = function(fieldName, getterName, lazyValue, staticName, prototype) {
     if (!init.lazies)
       init.lazies = Object.create(null);
     init.lazies[fieldName] = getterName;
+    prototype = prototype || Isolate.$isolateProperties;
     var sentinelUndefined = {};
     var sentinelInProgress = {};
     prototype[fieldName] = sentinelUndefined;
     prototype[getterName] = function() {
-      var result = $[fieldName];
+      var result = this[fieldName];
       try {
         if (result === sentinelUndefined) {
-          $[fieldName] = sentinelInProgress;
+          this[fieldName] = sentinelInProgress;
           try {
-            result = $[fieldName] = lazyValue();
+            result = this[fieldName] = lazyValue();
           } finally {
             if (result === sentinelUndefined)
-              $[fieldName] = null;
+              this[fieldName] = null;
           }
         } else
           if (result === sentinelInProgress)
-            H.throwCyclicInit(staticName);
+            H.throwCyclicInit(staticName || fieldName);
         return result;
       } finally {
-        $[getterName] = function() {
+        this[getterName] = function() {
           return this[fieldName];
         };
       }

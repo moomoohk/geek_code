@@ -42,8 +42,9 @@ div#loading {
   width: 100%;
   background-color: white;
   opacity: 1;
-    -webkit-transition: opacity 0.5s;
+  -webkit-transition: opacity 0.5s;
   -moz-transition: opacity 0.5s;
+  -o-transition: opacity 0.5s;
   transition: opacity 0.5s;
 }
 
@@ -63,6 +64,7 @@ h2.collapse {
   border-top-right-radius: 5px;
   -webkit-transition: background-color 0.5s;
   -moz-transition: background-color 0.5s;
+  -o-transition: background-color 0.5s;
   transition: background-color 0.5s;
 }
 
@@ -94,6 +96,10 @@ div.container {
                       padding-top 0.7s,
                       padding-bottom 0.7s,
                       background-color 0.5s;
+  -o-transition:      max-height 0.5s ease-out,
+                      padding-top 0.7s,
+                      padding-bottom 0.7s,
+                      background-color 0.5s;
   transition:         max-height 0.5s ease-out,
                       padding-top 0.7s,
                       padding-bottom 0.7s,
@@ -104,12 +110,81 @@ form {
   border-bottom-left-radius: 5px;
   border-bottom-right-radius: 5px;
   background-color: lightGray;
-  padding-left: 5px;
-  padding-right: 5px;
 }
 
-div.gradeContainer, button.removeModifiers {
+form.categoryForm:last-child {
+  margin-bottom: 150px;
+}
+
+input#customAge {
+  margin-right: 5px;
+}
+
+input.type {
+  margin-bottom: 10px;
+}
+
+div.gradeContainer {
+  opacity: 0;
+  display: inline-table;
+}
+
+button.showGrade, input#customAge {
   display: none;
+}
+
+button.addCategory, div.gradeContainer {
+  -webkit-transition: opacity 0.2s;
+  -moz-transition: opacity 0.2s;
+  -o-transition: opacity 0.2s;
+  transition: opacity 0.2s;
+}
+
+button.removeModifiers {
+  margin-left: 10px;
+}
+
+
+div.modifiersContainer {
+  display: inline;
+}
+
+div.category {
+  padding-bottom: 10px;
+  padding-left: 5px;
+  padding-right: 5px;
+  height: 50px;
+  border-bottom: 1px solid gray;
+  -webkit-transition: height 0.5s;
+  -moz-transition: height 0.5s;
+  -o-transition: height 0.5s;
+  transition: height 0.5s;
+}
+
+div.category:last-child {
+  border-bottom: none;
+  padding-bottom: 5px;
+}
+
+tr.gradeRow {
+  height: 25px;
+}
+
+span.code {
+  min-width: 42px;
+  display: inline-block;
+}
+
+.modifier + label {
+  margin-left: 2px;
+}
+.modifier {
+  margin-left: 10px;
+}
+
+span.secondarySeparator {
+  margin-left: 2px;
+  margin-right: 2px;
 }
 
 div#toggleButtons {

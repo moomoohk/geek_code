@@ -192,3 +192,7 @@ div#toggleButtons {
   padding-top: 5px;
   background-color: white;
 }
+
+div#share {
+  width: 250px;
+}

@@ -9675,7 +9675,7 @@ var dart = [
       }
       t1 = "button.removeModifiers[name='" + H.S(target.getAttribute("name")) + "']";
       t1 = document.querySelector(t1).style;
-      t1.display = "inline-block";
+      (t1 && C.CssStyleDeclaration_methods).set$opacity(t1, "1");
       F.generate();
     }
   },
@@ -9736,7 +9736,7 @@ var dart = [
       var target, t1, selectedModifier, secondary;
       target = H.interceptedTypeCast(J.get$target$x(e), "$isButtonElement");
       t1 = target.style;
-      t1.display = "none";
+      (t1 && C.CssStyleDeclaration_methods).set$opacity(t1, "0");
       t1 = "input[name='" + H.S(target.name) + "']:checked";
       selectedModifier = H.interceptedTypeCast(document.querySelector(t1), "$isInputElement");
       if (selectedModifier != null)

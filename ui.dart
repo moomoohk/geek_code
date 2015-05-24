@@ -356,7 +356,7 @@ void addListeners() {
       dropdown.disabled = false;
       if (secondary != null) secondary.disabled = false;
     }
-    querySelector("button.removeModifiers[name='${target.attributes["name"]}']").style.display = "inline-block";
+    querySelector("button.removeModifiers[name='${target.attributes["name"]}']").style.opacity = "1";
     generate();
   });
 
@@ -389,7 +389,7 @@ void addListeners() {
 
   querySelectorAll("button.removeModifiers").onClick.listen((Event e) {
     ButtonElement target = e.target as ButtonElement;
-    target.style.display = "none";
+    target.style.opacity = "0";
     InputElement selectedModifier = (querySelector("input[name='${target.name}']:checked") as InputElement);
     if (selectedModifier != null) selectedModifier.checked = false;
     (querySelector("select.grade[name='${target.name}']") as SelectElement).disabled = false;

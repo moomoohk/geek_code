@@ -133,7 +133,7 @@ button.showGrade, input#customAge {
   display: none;
 }
 
-button.addCategory, div.gradeContainer {
+button.addCategory, button.removeModifiers, div.gradeContainer {
   -webkit-transition: opacity 0.2s;
   -moz-transition: opacity 0.2s;
   -o-transition: opacity 0.2s;
@@ -141,6 +141,7 @@ button.addCategory, div.gradeContainer {
 }
 
 button.removeModifiers {
+  opacity: 0;
   margin-left: 10px;
 }
 

@@ -11,13 +11,13 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="scaffolded-by" content="https://github.com/google/stagehand">
-    <title>geek_code_frontend</title>
+    <title>Geek Code Generator</title>
 
     <link rel="stylesheet" href="styles/main.css">
     <link rel="stylesheet" href="styles/layout.css">
+    <link rel="stylesheet" href="static/fonts/mono_social_icons/mono_social_icons.css">
 
     <script type="application/dart" src="main.dart"></script>
-    <script data-pub-inline src="packages/browser/dart.js"></script>
     <script data-pub-inline="" src="/static/dart/packages/browser/dart.js"></script>
   </head>
   <body>
@@ -28,9 +28,22 @@
         <div id="toggleButtons">
           <button id="clear" class="sidebarButton">Clear</button>
         </div>
-        <button id="sidebarControl">test</button>
+        <div id="share">
+          <a class="share facebook" href="#" onclick="javascript:window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(location.href) + '&t=TITLE', '', 'menubar=no,toolbar=no,resizable=yes,scrollbars=yes,height=300,width=600');return false;" target="_blank" title="Share on Facebook">
+            <span class="symbol">circlefacebook</span>
+          </a>
+          <a class="share twitter" href="#" onclick="javascript:window.open('https://twitter.com/share?url=' + encodeURIComponent(location.href) + '&via=moomoohk&text=' + encodeURIComponent('{{ meta_description }}'), '', 'menubar=no,toolbar=no,resizable=yes,scrollbars=yes,height=300,width=600');return false;" target="_blank" title="Share on Twitter">
+            <span class="symbol">circletwitterbird</span>
+          </a>
+          <a class="share gplus" href="#" onclick="javascript:window.open('https://plus.google.com/share?url=' + encodeURIComponent(location.href), '', 'menubar=no,toolbar=no,resizable=yes,scrollbars=yes,height=350,width=480');return false;" target="_blank" title="Share on Google+">
+            <span class="symbol">circlegoogleplus</span>
+          </a>
+          <a class="share reddit" href="#" onclick="javascript:window.open('http://www.reddit.com/submit?url=' + encodeURIComponent(location.href) + '&title=' + encodeURIComponent('{{ meta_description }}'));return false;" target="_blank" title="Share on Reddit">
+            <span class="symbol">circlereddit</span>
+          </a>
+        </div>
         <footer>
-          <span>Version 0.0.3</span>
+          <span>Version 0.0.4</span>
           <br>
           <span>Powered by <a href="https://pub.dartlang.org/packages/geek_code" target="_blank">geek_code</a></span>
         </footer>

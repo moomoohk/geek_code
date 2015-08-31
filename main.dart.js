@@ -3726,14 +3726,14 @@ var dart = [
   _AsyncRun__scheduleImmediateJsOverride: [function(callback) {
     ++init.globalState.topEventLoop._activeJsAsyncCount;
     self.scheduleImmediate(H.convertDartClosureToJS(new P._AsyncRun__scheduleImmediateJsOverride_internalCallback(callback), 0));
-  }, "call$1", "_AsyncRun__scheduleImmediateJsOverride$closure", 2, 0, 24],
+  }, "call$1", "_AsyncRun__scheduleImmediateJsOverride$closure", 2, 0, 25],
   _AsyncRun__scheduleImmediateWithSetImmediate: [function(callback) {
     ++init.globalState.topEventLoop._activeJsAsyncCount;
     self.setImmediate(H.convertDartClosureToJS(new P._AsyncRun__scheduleImmediateWithSetImmediate_internalCallback(callback), 0));
-  }, "call$1", "_AsyncRun__scheduleImmediateWithSetImmediate$closure", 2, 0, 24],
+  }, "call$1", "_AsyncRun__scheduleImmediateWithSetImmediate$closure", 2, 0, 25],
   _AsyncRun__scheduleImmediateWithTimer: [function(callback) {
     P.Timer__createTimer(C.Duration_0, callback);
-  }, "call$1", "_AsyncRun__scheduleImmediateWithTimer$closure", 2, 0, 24],
+  }, "call$1", "_AsyncRun__scheduleImmediateWithTimer$closure", 2, 0, 25],
   _registerErrorHandler: function(errorHandler, zone) {
     var t1 = H.getDynamicRuntimeType();
     t1 = H.buildFunctionType(t1, [t1, t1])._isTest$1(errorHandler);
@@ -3825,7 +3825,7 @@ var dart = [
     }
   },
   _nullDataHandler: [function(value) {
-  }, "call$1", "_nullDataHandler$closure", 2, 0, 25],
+  }, "call$1", "_nullDataHandler$closure", 2, 0, 26],
   _nullErrorHandler: [function(error, stackTrace) {
     var t1 = $.Zone__current;
     t1.toString;
@@ -5512,10 +5512,10 @@ var dart = [
   },
   _defaultEquals: [function(a, b) {
     return J.$eq(a, b);
-  }, "call$2", "_defaultEquals$closure", 4, 0, 26],
+  }, "call$2", "_defaultEquals$closure", 4, 0, 27],
   _defaultHashCode: [function(a) {
     return J.get$hashCode$(a);
-  }, "call$1", "_defaultHashCode$closure", 2, 0, 27],
+  }, "call$1", "_defaultHashCode$closure", 2, 0, 28],
   IterableBase_iterableToShortString: function(iterable, leftDelimiter, rightDelimiter) {
     var parts, t1;
     if (P.IterableBase__isToStringVisiting(iterable)) {
@@ -6204,6 +6204,11 @@ var dart = [
   },
   SetMixin: {
     "^": "Object;",
+    addAll$1: function(_, elements) {
+      var t1;
+      for (t1 = new P.LinkedHashSetIterator(elements, elements._collection$_modifications, null, null), t1._collection$_cell = elements._collection$_first; t1.moveNext$0();)
+        this.add$1(0, t1._collection$_current);
+    },
     map$1: function(_, f) {
       return H.setRuntimeTypeInfo(new H.EfficientLengthMappedIterable(this, f), [H.getTypeArgumentByIndex(this, 0), null]);
     },
@@ -6258,10 +6263,10 @@ var dart = [
   },
   identical: [function(a, b) {
     return a == null ? b == null : a === b;
-  }, "call$2", "identical$closure", 4, 0, 28],
+  }, "call$2", "identical$closure", 4, 0, 29],
   identityHashCode: [function(object) {
     return H.objectHashCode(object);
-  }, "call$1", "identityHashCode$closure", 2, 0, 29],
+  }, "call$1", "identityHashCode$closure", 2, 0, 30],
   List_List$from: function(elements, growable, $E) {
     var list, t1;
     list = H.setRuntimeTypeInfo([], [$E]);
@@ -6642,7 +6647,7 @@ var dart = [
     else if (P.Device_isOpera() === true)
       return "oTransitionEnd";
     return "transitionend";
-  }, "call$1", "Element__determineTransitionEventType$closure", 2, 0, 30],
+  }, "call$1", "Element__determineTransitionEventType$closure", 2, 0, 31],
   InputElement_InputElement: function(type) {
     var e, exception;
     e = document.createElement("input", null);
@@ -6984,6 +6989,9 @@ var dart = [
     $indexSet: function(_, index, value) {
       throw H.wrapException(P.UnsupportedError$("Cannot modify list"));
     },
+    get$classes: function(_) {
+      return W._MultiElementCssClassSet__MultiElementCssClassSet(this);
+    },
     get$style: function(_) {
       return W._CssStyleDeclarationSet$(this);
     },
@@ -6993,7 +7001,7 @@ var dart = [
     $isEfficientLength: 1
   },
   Element: {
-    "^": "Node;style=",
+    "^": "Node;className},style=",
     get$children: function(receiver) {
       return new W._ChildrenElementList(receiver, receiver.children);
     },
@@ -7547,6 +7555,44 @@ var dart = [
       return [W.Node];
     },
     $isEfficientLength: 1
+  },
+  _MultiElementCssClassSet: {
+    "^": "CssClassSetImpl;_elementIterable,_sets",
+    readClasses$0: function() {
+      var s = P.LinkedHashSet_LinkedHashSet(null, null, null, P.String);
+      C.JSArray_methods.forEach$1(this._sets, new W._MultiElementCssClassSet_readClasses_closure(s));
+      return s;
+    },
+    writeClasses$1: function(s) {
+      var classes, t1;
+      classes = s.join$1(0, " ");
+      for (t1 = this._elementIterable, t1 = t1.get$iterator(t1); t1.moveNext$0();)
+        J.set$className$x(t1.__internal$_current, classes);
+    },
+    modify$1: function(f) {
+      C.JSArray_methods.forEach$1(this._sets, new W._MultiElementCssClassSet_modify_closure(f));
+    },
+    static: {_MultiElementCssClassSet__MultiElementCssClassSet: function(elements) {
+        return new W._MultiElementCssClassSet(elements, elements.map$1(elements, new W._MultiElementCssClassSet__MultiElementCssClassSet_closure()).toList$0(0));
+      }}
+  },
+  _MultiElementCssClassSet__MultiElementCssClassSet_closure: {
+    "^": "Closure:15;",
+    call$1: function(e) {
+      return J.get$classes$x(e);
+    }
+  },
+  _MultiElementCssClassSet_readClasses_closure: {
+    "^": "Closure:16;_captured_s_0",
+    call$1: function(e) {
+      return this._captured_s_0.addAll$1(0, e.readClasses$0());
+    }
+  },
+  _MultiElementCssClassSet_modify_closure: {
+    "^": "Closure:16;_captured_f_0",
+    call$1: function(e) {
+      return e.modify$1(this._captured_f_0);
+    }
   },
   _ElementCssClassSet: {
     "^": "CssClassSetImpl;_html$_element",
@@ -8664,7 +8710,7 @@ var dart = [
     type$1: [function(_, type) {
       this._type = type;
       return this;
-    }, "call$1", "get$type", 2, 0, 15],
+    }, "call$1", "get$type", 2, 0, 17],
     subValidate$3: function(grade, refuse, noKnowledge) {
       var t1, t2;
       this.get$type(this);
@@ -8912,32 +8958,32 @@ var dart = [
     return P.List_List$from(t1, true, H.getRuntimeTypeArgument(t1, "IterableBase", 0));
   },
   getTypes_closure: {
-    "^": "Closure:16;",
+    "^": "Closure:15;",
     call$1: function(e) {
       return !!J.getInterceptor(e).$isInputElement && e.type === "checkbox" && e.checked === true;
     }
   },
   getTypes_closure0: {
-    "^": "Closure:17;",
+    "^": "Closure:18;",
     call$1: function(e) {
       return J.get$value$x(e);
     }
   },
   getTypes_closure1: {
-    "^": "Closure:18;_captured_selectedTypeStrings_0",
+    "^": "Closure:19;_captured_selectedTypeStrings_0",
     call$1: function(type) {
       return C.JSArray_methods.contains$1(this._captured_selectedTypeStrings_0, J.toString$0(type));
     }
   },
   getCategories_closure: {
-    "^": "Closure:19;",
+    "^": "Closure:20;",
     call$1: function(e) {
       var t1 = J.getInterceptor$x(e);
       return J.get$opacity$x(J.get$style$x(J.get$parent$x(t1.get$parent(e)))) === "1" && J.get$opacity$x(J.get$style$x(J.get$parent$x(t1.get$parent(e)))) !== "" && !t1.get$classes(e).contains$1(0, "secondary");
     }
   },
   getCategories_closure0: {
-    "^": "Closure:19;",
+    "^": "Closure:20;",
     call$1: function(e) {
       var t1, builder, t2, selectedModifier, extremeInput, roundnessGrade, ageInput, age, t3, genderSelect, modifier;
       t1 = J.getInterceptor$x(e);
@@ -9539,7 +9585,7 @@ var dart = [
     }
   },
   buildCategories_closure: {
-    "^": "Closure:20;",
+    "^": "Closure:21;",
     call$1: function(e) {
       var t1 = J.getInterceptor$x(e);
       if (t1.get$metaKey(e) !== true && !C.JSArray_methods.contains$1($.get$keys(), t1.get$keyCode(e)))
@@ -9548,13 +9594,13 @@ var dart = [
     }
   },
   buildCategories_closure0: {
-    "^": "Closure:21;",
+    "^": "Closure:22;",
     call$1: function(e) {
       return J.preventDefault$0$x(e);
     }
   },
   buildCategories_closure1: {
-    "^": "Closure:20;",
+    "^": "Closure:21;",
     call$1: function(e) {
       if (J.get$keyCode$x(e) === 27)
         H.interceptedTypeCast(W._convertNativeToDart_EventTarget(e.target), "$isInputElement").value = "";
@@ -9562,7 +9608,7 @@ var dart = [
     }
   },
   buildCategories_closure2: {
-    "^": "Closure:21;_captured_gradeSelect_0,_captured_codeSpan_1",
+    "^": "Closure:22;_captured_gradeSelect_0,_captured_codeSpan_1",
     call$1: function(e) {
       var selected = H.interceptedTypeCast(document.querySelector("input[type=radio][name='U']:checked"), "$isInputElement");
       if (selected != null)
@@ -9589,7 +9635,7 @@ var dart = [
     }
   },
   buildCategories_closure5: {
-    "^": "Closure:21;_captured_codeSpan_6",
+    "^": "Closure:22;_captured_codeSpan_6",
     call$1: function(e) {
       this._captured_codeSpan_6.textContent = H.interceptedTypeCast(J.get$target$x(e), "$isSelectElement").value;
     }
@@ -9612,13 +9658,13 @@ var dart = [
     }
   },
   clear_closure: {
-    "^": "Closure:16;",
+    "^": "Closure:15;",
     call$1: function(e) {
       return !!J.getInterceptor(e).$isInputElement && e.type === "checkbox" && e.checked === true;
     }
   },
   clear_closure0: {
-    "^": "Closure:22;",
+    "^": "Closure:23;",
     call$1: function(option) {
       return J.$eq(J.get$value$x(option), "0");
     }
@@ -9636,7 +9682,7 @@ var dart = [
     }
   },
   addListeners_closure0: {
-    "^": "Closure:21;",
+    "^": "Closure:22;",
     call$1: function(e) {
       return J.preventDefault$0$x(e);
     }
@@ -9648,21 +9694,30 @@ var dart = [
     }
   },
   addListeners_closure2: {
-    "^": "Closure:21;",
+    "^": "Closure:22;",
     call$1: function(e) {
-      var target, t1, dropdown, secondary, exclusive, modifier;
+      var target, t1, dropdown, secondary, exclusive;
       target = H.interceptedTypeCast(J.get$target$x(e), "$isHtmlElement");
       t1 = "select.grade[name='" + H.S(target.getAttribute("name")) + "']";
       dropdown = H.interceptedTypeCast(document.querySelector(t1), "$isSelectElement");
       t1 = "select.secondary[name='" + H.S(target.getAttribute("name")) + "']";
       secondary = H.interceptedTypeCast(document.querySelector(t1), "$isSelectElement");
       exclusive = target.classList.contains("exclusive");
+      P.print(target.getAttribute("name"));
       if (!exclusive) {
-        for (t1 = ".modifier[name='" + H.S(target.getAttribute("name")) + "']", t1 = J.get$iterator$ax(document.querySelector(t1)); t1.moveNext$0(), false;) {
-          modifier = t1.get$current();
-          modifier.get$classes(modifier).contains$1(0, "exclusive");
+        t1 = ".modifier[name='" + H.S(target.getAttribute("name")) + "']";
+        t1 = new W._FrozenElementList(document.querySelectorAll(t1));
+        t1 = t1.get$iterator(t1);
+        while (true) {
+          if (!t1.moveNext$0()) {
+            exclusive = false;
+            break;
+          }
+          if (J.get$classes$x(t1.__internal$_current).contains$1(0, "exclusive")) {
+            exclusive = true;
+            break;
+          }
         }
-        exclusive = false;
       }
       if (exclusive) {
         dropdown.disabled = true;
@@ -9680,7 +9735,7 @@ var dart = [
     }
   },
   addListeners_closure3: {
-    "^": "Closure:21;",
+    "^": "Closure:22;",
     call$1: function(e) {
       var target, t1, category;
       target = H.interceptedTypeCast(J.get$target$x(e), "$isElement");
@@ -9705,7 +9760,7 @@ var dart = [
     }
   },
   addListeners_closure4: {
-    "^": "Closure:21;",
+    "^": "Closure:22;",
     call$1: function(e) {
       var target, category, t1, t2;
       target = H.interceptedTypeCast(J.get$target$x(e), "$isElement");
@@ -9731,7 +9786,7 @@ var dart = [
     }
   },
   addListeners_closure5: {
-    "^": "Closure:21;",
+    "^": "Closure:22;",
     call$1: function(e) {
       var target, t1, selectedModifier, secondary;
       target = H.interceptedTypeCast(J.get$target$x(e), "$isButtonElement");
@@ -9750,7 +9805,7 @@ var dart = [
     }
   },
   addListeners_closure6: {
-    "^": "Closure:21;",
+    "^": "Closure:22;",
     call$1: function(e) {
       var target, t1, select, t2;
       target = H.interceptedTypeCast(J.get$target$x(e), "$isButtonElement");
@@ -9766,13 +9821,13 @@ var dart = [
     }
   },
   addListeners__closure: {
-    "^": "Closure:22;",
+    "^": "Closure:23;",
     call$1: function(option) {
       return J.$eq(J.get$value$x(option), "0");
     }
   },
   addListeners_closure7: {
-    "^": "Closure:21;",
+    "^": "Closure:22;",
     call$1: function(e) {
       var target, t1, t2;
       target = H.interceptedTypeCast(J.get$target$x(e), "$isSelectElement");
@@ -9799,7 +9854,7 @@ var dart = [
     }
   },
   addListeners_closure9: {
-    "^": "Closure:21;_captured_heading_4,_captured_toggle_5",
+    "^": "Closure:22;_captured_heading_4,_captured_toggle_5",
     call$1: function(e) {
       var next, t1, t2, t3;
       next = H.interceptedTypeCast(J.get$target$x(e), "$isElement").nextElementSibling;
@@ -9828,7 +9883,7 @@ var dart = [
     }
   },
   addListeners_closure10: {
-    "^": "Closure:23;",
+    "^": "Closure:24;",
     call$1: function(e) {
       J.preventDefault$0$x(e);
       J.select$0$x($.get$output());
@@ -10073,6 +10128,9 @@ J.replaceWith$1$x = function(receiver, a0) {
 };
 J.select$0$x = function(receiver) {
   return J.getInterceptor$x(receiver).select$0(receiver);
+};
+J.set$className$x = function(receiver, value) {
+  return J.getInterceptor$x(receiver).set$className(receiver, value);
 };
 J.set$disabled$x = function(receiver, value) {
   return J.getInterceptor$x(receiver).set$disabled(receiver, value);
@@ -10550,8 +10608,9 @@ init.types = [{func: ""},
 {func: "", args: [,,]},
 {func: "", args: [P.Symbol,,]},
 {func: "", ret: P.String, args: [P.$int]},
-{func: "", ret: V.UnixGeekCodeCategoryBuilder, args: [V.UnixType]},
 {func: "", args: [W.Element]},
+{func: "", args: [P.CssClassSetImpl]},
+{func: "", ret: V.UnixGeekCodeCategoryBuilder, args: [V.UnixType]},
 {func: "", args: [W.InputElement]},
 {func: "", args: [Z.GeekCodeType]},
 {func: "", args: [W.SelectElement]},

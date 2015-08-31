@@ -50,7 +50,8 @@ List<int> keys = [
 ];
 
 void buildUI() {
-  if (window.innerWidth > 768) querySelector("#wrapper").classes.add("showMenu");
+  if (window.innerWidth > 768) querySelector("#wrapper").classes
+      .add("showMenu");
 
   buildTypes();
   buildSections();
@@ -111,7 +112,8 @@ void buildCategories() {
         String grade = "";
         if (i > 0) for (int j = 1; j <= i; j++) grade += "+";
         else if (i < 0) for (int j = -1; j >= i; j--) grade += "-";
-        gradeSelect.children.add(new OptionElement(value: "$i", selected: i == 0)..text = grade);
+        gradeSelect.children.add(
+            new OptionElement(value: "$i", selected: i == 0)..text = grade);
       }
       SpanElement codeSpan = new SpanElement()
         ..text = builder.code
@@ -199,7 +201,8 @@ void buildCategories() {
               ..id = "shapeRoundness"
               ..children.add(new OptionElement(value: "2")..text = "++")
               ..children.add(new OptionElement(value: "1")..text = "+")
-              ..children.add(new OptionElement(value: "0", selected: true)..text = "")
+              ..children
+                  .add(new OptionElement(value: "0", selected: true)..text = "")
               ..children.add(new OptionElement(value: "-1")..text = "-")
               ..children.add(new OptionElement(value: "-2")..text = "--")
               ..children.add(new OptionElement(value: "-3")..text = "---"))
@@ -208,7 +211,8 @@ void buildCategories() {
               ..className = "secondarySeparator");
           break;
         case "a":
-          gradeSelect.children.insert(0, new OptionElement(value: "customAge")..text = "Custom age...");
+          gradeSelect.children.insert(
+              0, new OptionElement(value: "customAge")..text = "Custom age...");
           modifiersContainer.children
             ..add(new InputElement(type: "text")
               ..name = "a"
@@ -220,7 +224,8 @@ void buildCategories() {
               })
               ..onPaste.listen((Event e) => e.preventDefault())
               ..onKeyUp.listen((KeyboardEvent e) {
-                if (e.keyCode == KeyCode.ESC) (e.target as InputElement).value = "";
+                if (e.keyCode == KeyCode.ESC) (e.target as InputElement).value =
+                    "";
                 generate();
               }))
             ..add(new ButtonElement()
@@ -244,12 +249,14 @@ void buildCategories() {
             ..children.add(new OptionElement(value: "H")..text = "HPUX")
             ..children.add(new OptionElement(value: "I")..text = "IRIX")
             ..children.add(new OptionElement(value: "O")..text = "OSF/1")
-            ..children.add(new OptionElement(value: "S")..text = "Sun OS/Solaris")
+            ..children
+                .add(new OptionElement(value: "S")..text = "Sun OS/Solaris")
             ..children.add(new OptionElement(value: "C")..text = "SCO Unix")
             ..children.add(new OptionElement(value: "X")..text = "NeXT")
             ..children.add(new OptionElement(value: "*")..text = "[Other]")
             ..onChange.listen((Event e) {
-              InputElement selected = (querySelector("input[type=radio][name='U']:checked") as InputElement);
+              InputElement selected = (querySelector(
+                  "input[type=radio][name='U']:checked") as InputElement);
               if (selected != null) selected.checked = false;
               gradeSelect.disabled = false;
               codeSpan.text = "U" + (e.target as SelectElement).value;
@@ -322,17 +329,25 @@ void showNotification(String text, [int duration = 3]) {
 
 void clear() {
   if (output.text.length > 0) {
-    for (InputElement e in querySelector("form#typesForm").children.where((Element e) => e is InputElement && e.type == "checkbox" && e.checked)) e.click();
-    for (SelectElement grade in querySelectorAll(".grade,.secondary")) grade.selectedIndex = grade.options.indexOf(grade.options.firstWhere((OptionElement option) => option.value == "0"));
-    for (ButtonElement removeModifiers in querySelectorAll(".removeModifiers")) removeModifiers.click();
-    for (ButtonElement button in querySelectorAll("button.removeCategory")) button.click();
+    for (InputElement e in querySelector("form#typesForm").children.where(
+        (Element e) =>
+            e is InputElement && e.type == "checkbox" && e.checked)) e.click();
+    for (SelectElement grade
+        in querySelectorAll(".grade,.secondary")) grade.selectedIndex =
+            grade.options.indexOf(grade.options
+                .firstWhere((OptionElement option) => option.value == "0"));
+    for (ButtonElement removeModifiers
+        in querySelectorAll(".removeModifiers")) removeModifiers.click();
+    for (ButtonElement button
+        in querySelectorAll("button.removeCategory")) button.click();
     showNotification("Cleared");
   }
 }
 
 void addListeners() {
   window.onResize.listen((_) {
-    if (window.innerWidth > 768) querySelector("#wrapper").classes.add("showMenu");
+    if (window.innerWidth > 768) querySelector("#wrapper").classes
+        .add("showMenu");
     else querySelector("#wrapper").classes.remove("showMenu");
   });
 
@@ -342,10 +357,15 @@ void addListeners() {
 
   querySelectorAll(".modifier").onChange.listen((Event e) {
     HtmlElement target = e.target as HtmlElement;
-    SelectElement dropdown = querySelector("select.grade[name='${target.attributes["name"]}']") as SelectElement;
-    SelectElement secondary = querySelector("select.secondary[name='${target.attributes["name"]}']") as SelectElement;
+    SelectElement dropdown = querySelector(
+        "select.grade[name='${target.attributes["name"]}']") as SelectElement;
+    SelectElement secondary = querySelector(
+        "select.secondary[name='${target.attributes["name"]}']") as SelectElement;
     bool exclusive = target.classes.contains("exclusive");
-    if (!exclusive) for (HtmlElement modifier in querySelector(".modifier[name='${target.attributes["name"]}']")) if (modifier.classes.contains("exclusive")) {
+    print(target.attributes["name"]);
+    if (!exclusive) for (HtmlElement modifier in querySelectorAll(
+        ".modifier[name='${target.attributes["name"]}']")) if (modifier.classes
+        .contains("exclusive")) {
       exclusive = true;
       break;
     }
@@ -356,7 +376,9 @@ void addListeners() {
       dropdown.disabled = false;
       if (secondary != null) secondary.disabled = false;
     }
-    querySelector("button.removeModifiers[name='${target.attributes["name"]}']").style.opacity = "1";
+    querySelector(
+            "button.removeModifiers[name='${target.attributes["name"]}']").style.opacity =
+        "1";
     generate();
   });
 
@@ -367,7 +389,8 @@ void addListeners() {
     target
       ..style.opacity = "0"
       ..onTransitionEnd.first.then((_) {
-        querySelector("div.gradeContainer[name='$category']").style.opacity = "1";
+        querySelector("div.gradeContainer[name='$category']").style.opacity =
+            "1";
         target.style.display = "none";
         generate();
       });
@@ -390,27 +413,41 @@ void addListeners() {
   querySelectorAll("button.removeModifiers").onClick.listen((Event e) {
     ButtonElement target = e.target as ButtonElement;
     target.style.opacity = "0";
-    InputElement selectedModifier = (querySelector("input[name='${target.name}']:checked") as InputElement);
+    InputElement selectedModifier =
+        (querySelector("input[name='${target.name}']:checked") as InputElement);
     if (selectedModifier != null) selectedModifier.checked = false;
-    (querySelector("select.grade[name='${target.name}']") as SelectElement).disabled = false;
-    SelectElement secondary = querySelector("select.secondary[name='${target.name}']") as SelectElement;
+    (querySelector(
+            "select.grade[name='${target.name}']") as SelectElement).disabled =
+        false;
+    SelectElement secondary = querySelector(
+        "select.secondary[name='${target.name}']") as SelectElement;
     if (secondary != null) secondary.disabled = false;
   });
 
   querySelectorAll("button.showGrade").onClick.listen((Event e) {
     ButtonElement target = e.target as ButtonElement;
-    SelectElement select = querySelector("select[name='${target.name}']") as SelectElement;
-    select.selectedIndex = select.options.indexOf(select.options.firstWhere((OptionElement option) => option.value == "0"));
-    querySelectorAll("select[name='${target.name}'],input[name=${target.name}],input[name='${target.name}']+label").style.display = "inline-block";
-    querySelectorAll("button.showGrade[name='${target.name}'],input#customAge").style.display = "none";
+    SelectElement select =
+        querySelector("select[name='${target.name}']") as SelectElement;
+    select.selectedIndex = select.options.indexOf(select.options
+        .firstWhere((OptionElement option) => option.value == "0"));
+    querySelectorAll(
+            "select[name='${target.name}'],input[name=${target.name}],input[name='${target.name}']+label").style.display =
+        "inline-block";
+    querySelectorAll(
+            "button.showGrade[name='${target.name}'],input#customAge").style.display =
+        "none";
   });
 
   querySelectorAll("select.grade, select.secondary").onChange.listen((Event e) {
     SelectElement target = e.target as SelectElement;
     if (target.name == "a") {
       if (target.options[target.selectedIndex].value == "customAge") {
-        querySelectorAll("select[name=${target.name}],input[name=${target.name}],input[name=${target.name}]+label").style.display = "none";
-        querySelectorAll("button.showGrade[name=${target.name}],input#customAge").style.display = "inline-block";
+        querySelectorAll(
+                "select[name=${target.name}],input[name=${target.name}],input[name=${target.name}]+label").style.display =
+            "none";
+        querySelectorAll(
+                "button.showGrade[name=${target.name}],input#customAge").style.display =
+            "inline-block";
       }
     }
     generate();
@@ -455,7 +492,8 @@ void addListeners() {
 
   toggleMenuButton.onClick.listen((_) {
     Element wrapper = querySelector("#wrapper");
-    if (wrapper.classes.contains("showMenu")) wrapper.classes.remove("showMenu");
+    if (wrapper.classes.contains("showMenu")) wrapper.classes
+        .remove("showMenu");
     else wrapper.classes.add("showMenu");
   });
 
